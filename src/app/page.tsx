@@ -1,9 +1,16 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import dynamic from "next/dynamic";
 import { SAMPLE_INPUT } from "@/lib/sampleInput";
 import type { AnalyzeResult, AnalyzeSuccess } from "@/lib/analyze";
 import type { JobState } from "@/lib/jobStore";
+
+// Remotion Player runs in the browser only.
+const Preview = dynamic(() => import("@/components/Preview"), {
+  ssr: false,
+  loading: () => <p className="text-xs text-[#7d7298]">미리보기 로딩 중...</p>,
+});
 
 type DocView = { id: string; title: string; path: string; rawMarkdown: string } | null;
 
@@ -206,6 +213,20 @@ export default function Home() {
             showAll={showAllThemes}
             onToggleAll={() => setShowAllThemes((v) => !v)}
           />
+
+          <section className="mt-6 rounded-3xl border border-[#241c38] bg-[#120d1f] p-5">
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+              <h2 className="text-base font-bold text-white">미리보기</h2>
+              <button
+                onClick={startRender}
+                disabled={rendering}
+                className="rounded-xl bg-brand px-5 py-2.5 text-sm font-bold text-white transition hover:brightness-110 disabled:opacity-40"
+              >
+                {rendering ? "렌더링 중..." : "이 디자인으로 MP4 생성"}
+              </button>
+            </div>
+            <Preview spec={success.spec} themeId={selectedTheme} />
+          </section>
         </>
       )}
 
