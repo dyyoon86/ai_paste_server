@@ -211,8 +211,7 @@ export default function Home() {
             selected={selectedTheme}
             onSelect={setSelectedTheme}
             onViewDoc={openDoc}
-            showAll={showAllThemes}
-            onToggleAll={() => setShowAllThemes((v) => !v)}
+            onOpenGallery={() => setShowAllThemes(true)}
           />
 
           <section className="mt-6 rounded-3xl border border-line bg-surface p-5">
@@ -221,13 +220,25 @@ export default function Home() {
               <button
                 onClick={startRender}
                 disabled={rendering}
-                className="rounded-xl bg-brand px-5 py-2.5 text-sm font-bold text-white transition hover:brightness-110 disabled:opacity-40"
+                className="rounded-xl bg-brand px-5 py-2.5 text-sm font-bold text-white shadow-glow transition hover:brightness-110 disabled:opacity-40"
               >
                 {rendering ? "렌더링 중..." : "이 디자인으로 MP4 생성"}
               </button>
             </div>
             <Preview spec={success.spec} themeId={selectedTheme} />
           </section>
+
+          {showAllThemes && (
+            <ThemeGalleryModal
+              data={success}
+              selected={selectedTheme}
+              onSelect={(id) => {
+                setSelectedTheme(id);
+                setShowAllThemes(false);
+              }}
+              onClose={() => setShowAllThemes(false)}
+            />
+          )}
         </>
       )}
 
@@ -419,26 +430,10 @@ function ThemeCard({
   );
 }
 
-function ThemePanel({
-  data,
-  selected,
-  onSelect,
-  onViewDoc,
-  showAll,
-  onToggleAll,
-}: {
-  data: AnalyzeSuccess;
-  selected: string | null;
-  onSelect: (id: string) => void;
-  onViewDoc: (id: string) => void;
-  showAll: boolean;
-  onToggleAll: () => void;
-}) {
-  // Group the full library by category (preserving the recommendation order
-  // within each group).
+function groupByCategory(items: Rec[]): { label: string; items: Rec[] }[] {
   const groups: { label: string; items: Rec[] }[] = [];
   const byCat = new Map<string, { label: string; items: Rec[] }>();
-  for (const t of data.allThemes) {
+  for (const t of items) {
     let g = byCat.get(t.category);
     if (!g) {
       g = { label: t.categoryLabel, items: [] };
@@ -447,23 +442,50 @@ function ThemePanel({
     }
     g.items.push(t);
   }
+  return groups;
+}
+
+function ThemePanel({
+  data,
+  selected,
+  onSelect,
+  onViewDoc,
+  onOpenGallery,
+}: {
+  data: AnalyzeSuccess;
+  selected: string | null;
+  onSelect: (id: string) => void;
+  onViewDoc: (id: string) => void;
+  onOpenGallery: () => void;
+}) {
+  // If the selected theme isn't one of the 3 recommendations, surface it as a
+  // 4th card so the user always sees what's currently applied.
+  const recIds = new Set(data.recommendations.map((r) => r.id));
+  const selectedExtra =
+    selected && !recIds.has(selected)
+      ? data.allThemes.find((t) => t.id === selected)
+      : undefined;
+  const cards = selectedExtra
+    ? [selectedExtra, ...data.recommendations]
+    : data.recommendations;
 
   return (
     <section className="mt-6 rounded-3xl border border-line bg-surface p-5">
-      <div className="mb-1 flex items-center justify-between">
+      <div className="mb-1 flex items-center justify-between gap-3">
         <h2 className="text-base font-bold text-white">디자인 템플릿</h2>
         <button
-          onClick={onToggleAll}
-          className="rounded-lg border border-line2 px-3 py-1 text-xs text-muted hover:border-brand"
+          onClick={onOpenGallery}
+          className="rounded-lg border border-line2 px-3 py-1.5 text-xs font-semibold text-fg2 transition hover:border-brand"
         >
-          {showAll ? "추천만 보기" : `전체 ${data.allThemes.length}개 템플릿 보기`}
+          전체 {data.allThemes.length}개 둘러보기 →
         </button>
       </div>
       <p className="mb-4 text-xs text-subtle">
-        주제에 맞춰 추천된 템플릿입니다. 각 템플릿은 색·폰트·레이아웃·모션이 다릅니다. 전체 {data.allThemes.length}개에서 직접 골라도 됩니다.
+        주제에 맞춰 추천된 템플릿입니다. 각 템플릿은 색·폰트·레이아웃·모션이 다릅니다.
+        선택하면 아래 미리보기에 바로 반영됩니다.
       </p>
       <div className="grid gap-3 md:grid-cols-3">
-        {data.recommendations.map((rec) => (
+        {cards.slice(0, 3).map((rec) => (
           <ThemeCard
             key={rec.id}
             rec={rec}
@@ -473,36 +495,94 @@ function ThemePanel({
           />
         ))}
       </div>
-
-      {showAll && (
-        <div className="mt-5 space-y-5">
-          {groups.map((g) => (
-            <div key={g.label}>
-              <p className="mb-2 text-xs font-semibold text-muted">
-                {g.label}
-                <span className="ml-1 text-faint">({g.items.length})</span>
-              </p>
-              <div className="grid gap-3 md:grid-cols-4">
-                {g.items.map((rec) => (
-                  <ThemeCard
-                    key={rec.id}
-                    rec={rec}
-                    active={selected === rec.id}
-                    onSelect={onSelect}
-                    onViewDoc={onViewDoc}
-                    compact
-                  />
-                ))}
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-
       <p className="mt-3 text-[11px] text-faint">
         칩(skill doc)을 클릭하면 Remotion 원본 markdown을 그대로 볼 수 있습니다.
       </p>
     </section>
+  );
+}
+
+function ThemeGalleryModal({
+  data,
+  selected,
+  onSelect,
+  onClose,
+}: {
+  data: AnalyzeSuccess;
+  selected: string | null;
+  onSelect: (id: string) => void;
+  onClose: () => void;
+}) {
+  const [q, setQ] = useState("");
+  const filtered = q.trim()
+    ? data.allThemes.filter((t) =>
+        `${t.name} ${t.vibe} ${t.categoryLabel} ${t.bestFor.join(" ")}`
+          .toLowerCase()
+          .includes(q.trim().toLowerCase()),
+      )
+    : data.allThemes;
+  const groups = groupByCategory(filtered);
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 p-0 sm:items-center sm:p-6"
+      onClick={onClose}
+    >
+      <div
+        className="flex max-h-[92vh] w-full max-w-5xl flex-col rounded-t-2xl border border-line2 bg-surface sm:max-h-[88vh] sm:rounded-2xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between gap-3 border-b border-line p-4">
+          <div>
+            <h3 className="font-bold text-white">디자인 템플릿 — 전체 {data.allThemes.length}개</h3>
+            <p className="text-[11px] text-subtle">클릭하면 적용되고 닫힙니다 · 미리보기에 반영됩니다</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <input
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder="검색 (이름·무드·카테고리)"
+              className="w-44 rounded-lg border border-line2 bg-inset px-3 py-1.5 text-xs text-fg outline-none focus:border-brand"
+            />
+            <button
+              onClick={onClose}
+              className="rounded-lg border border-line2 px-3 py-1.5 text-sm text-muted hover:border-brand"
+            >
+              닫기
+            </button>
+          </div>
+        </div>
+
+        <div className="scrollbar-thin overflow-auto p-4">
+          {groups.length === 0 ? (
+            <p className="py-10 text-center text-sm text-subtle">검색 결과가 없습니다.</p>
+          ) : (
+            <div className="space-y-5">
+              {groups.map((g) => (
+                <div key={g.label}>
+                  <p className="mb-2 text-xs font-semibold text-muted">
+                    {g.label}
+                    <span className="ml-1 text-faint">({g.items.length})</span>
+                  </p>
+                  <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+                    {g.items.map((rec) => (
+                      <ThemeCard
+                        key={rec.id}
+                        rec={rec}
+                        active={selected === rec.id}
+                        onSelect={onSelect}
+                        onViewDoc={() => {}}
+                        compact
+                      />
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
   );
 }
 
