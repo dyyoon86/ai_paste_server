@@ -266,7 +266,7 @@ export function startRender(state: JobState, plan: RenderPlan): void {
       const pctMatch = [...text.matchAll(/(\d{1,3})%/g)].pop();
       if (pctMatch) {
         const pct = Math.min(99, parseInt(pctMatch[1], 10)) / 100;
-        if (pct > lastProgress) {
+        if (pct >= lastProgress + 0.03) {
           lastProgress = pct;
           void patchStatus(jobId, {
             progress: 0.1 + pct * 0.85,

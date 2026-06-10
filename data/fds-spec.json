@@ -1,0 +1,82 @@
+{
+  "schema": "remotion.one_click_video.v1",
+  "title": "FDS, 0.3초의 방어",
+  "format": "vertical_short_video",
+  "aspect_ratio": "9:16",
+  "resolution": { "width": 1080, "height": 1920 },
+  "duration_seconds": 30,
+  "language": "ko",
+  "style": {
+    "name": "Clean Dark Motion",
+    "background": "#0D0D0D",
+    "accent_color": "#FF3B30",
+    "text_style": "white bold large mobile readable",
+    "motion": "subtle kinetic typography"
+  },
+  "summary": "국내 PG사의 이상거래탐지(FDS)가 0.3초 만에 수백만 건의 거래를 분석해 사기 거래를 차단하는 과정을 보여준다.",
+  "core_message": "FDS는 0.3초 안에 수백만 건을 분석하고 위험 거래를 차단한다.",
+  "cta": { "enabled": true, "text": "차단 완료 ✅", "action": "none" },
+  "scenes": [
+    {
+      "id": 1,
+      "start": 0,
+      "end": 3,
+      "screen_text": "0.3초",
+      "narration": "결제 한 건이 승인되기까지 걸리는 시간, 단 0.3초입니다.",
+      "visual_direction": "큰 카운트다운 숫자 중앙 배치, 빨간 글로우 펄스, fade in",
+      "transition": "fade"
+    },
+    {
+      "id": 2,
+      "start": 3,
+      "end": 7,
+      "screen_text": "수백만 건",
+      "narration": "그 짧은 순간에도 수백만 건의 거래가 동시에 일어납니다.",
+      "visual_direction": "카운터가 위로 빠르게 증가, slide up 등장",
+      "transition": "slide"
+    },
+    {
+      "id": 3,
+      "start": 7,
+      "end": 12,
+      "screen_text": "이상 거래 포착",
+      "narration": "그 안에서 단 하나의 수상한 거래를 FDS가 잡아냅니다.",
+      "visual_direction": "거래 행 스트림, 한 행이 빨간색으로 강조, 빨간 행 zoom in",
+      "transition": "zoom"
+    },
+    {
+      "id": 4,
+      "start": 12,
+      "end": 18,
+      "screen_text": "거래 → 룰 → ML → 차단",
+      "narration": "거래는 룰 엔진과 머신러닝 분석을 거쳐 위험하면 즉시 차단됩니다.",
+      "visual_direction": "플로우 다이어그램, 파란 화살표, 카드가 순서대로 등장",
+      "transition": "slide"
+    },
+    {
+      "id": 5,
+      "start": 18,
+      "end": 24,
+      "screen_text": "위치 · 시간 · 패턴",
+      "narration": "위치, 시간, 평소 결제 패턴을 종합해 위험도를 계산합니다.",
+      "visual_direction": "세 개 아이콘 카드가 순서대로 pop, 위치/시간/패턴",
+      "transition": "zoom"
+    },
+    {
+      "id": 6,
+      "start": 24,
+      "end": 30,
+      "screen_text": "차단 완료 ✅",
+      "narration": "위험 거래는 차단되고, 당신의 결제는 안전하게 지켜집니다.",
+      "visual_direction": "초록 배지 차단 완료 중앙 등장, calm fade out",
+      "transition": "fade"
+    }
+  ],
+  "assets": [],
+  "render_notes": [
+    "Use Korean-safe font fallback.",
+    "Keep all text within mobile safe area.",
+    "Main text minimum 80px, white bold.",
+    "Red accent for threat scenes, green accent for resolution."
+  ]
+}

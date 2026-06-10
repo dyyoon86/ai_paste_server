@@ -59,12 +59,45 @@ export async function writeJson(
   await writeJobFile(jobId, relName, JSON.stringify(value, null, 2));
 }
 
-export async function writeStatus(state: JobState): Promise<void> {
-  state.updatedAt = nowIso();
-  await writeJobFile(state.jobId, "status.json", JSON.stringify(state, null, 2));
+/**
+ * Per-job write serialization. Progress updates fire rapidly from the render
+ * child's stdout; without this, concurrent writeFile() calls to status.json
+ * interleave and corrupt the file (which then makes readStatus throw → 404).
+ */
+const jobLocks = new Map<string, Promise<unknown>>();
+
+function withJobLock<T>(jobId: string, fn: () => Promise<T>): Promise<T> {
+  const prev = jobLocks.get(jobId) ?? Promise.resolve();
+  const next = prev.then(fn, fn);
+  // Keep the chain alive but swallow rejection so one failure doesn't poison it.
+  jobLocks.set(
+    jobId,
+    next.then(
+      () => undefined,
+      () => undefined,
+    ),
+  );
+  return next;
 }
 
-export async function readStatus(jobId: string): Promise<JobState | null> {
+/** Atomic write: write to a unique temp file then rename (atomic on same FS). */
+async function atomicWrite(jobId: string, relName: string, contents: string): Promise<void> {
+  const target = jobPath(jobId, relName);
+  await fs.mkdir(path.dirname(target), { recursive: true });
+  const tmp = `${target}.tmp-${process.pid}-${tmpCounter++}`;
+  await fs.writeFile(tmp, contents, "utf8");
+  await fs.rename(tmp, target);
+}
+let tmpCounter = 0;
+
+export async function writeStatus(state: JobState): Promise<void> {
+  await withJobLock(state.jobId, async () => {
+    state.updatedAt = nowIso();
+    await atomicWrite(state.jobId, "status.json", JSON.stringify(state, null, 2));
+  });
+}
+
+async function readStatusRaw(jobId: string): Promise<JobState | null> {
   try {
     const raw = await fs.readFile(jobPath(jobId, "status.json"), "utf8");
     return JSON.parse(raw) as JobState;
@@ -73,15 +106,26 @@ export async function readStatus(jobId: string): Promise<JobState | null> {
   }
 }
 
+export async function readStatus(jobId: string): Promise<JobState | null> {
+  // Reads happen outside the lock; atomic rename guarantees we never see a
+  // partial file, but retry once to be safe against a rename-in-progress window.
+  const first = await readStatusRaw(jobId);
+  if (first) return first;
+  await new Promise((r) => setTimeout(r, 15));
+  return readStatusRaw(jobId);
+}
+
 export async function patchStatus(
   jobId: string,
   patch: Partial<JobState>,
 ): Promise<JobState | null> {
-  const current = await readStatus(jobId);
-  if (!current) return null;
-  const next: JobState = { ...current, ...patch, updatedAt: nowIso() };
-  await writeJobFile(jobId, "status.json", JSON.stringify(next, null, 2));
-  return next;
+  return withJobLock(jobId, async () => {
+    const current = await readStatusRaw(jobId);
+    if (!current) return null;
+    const next: JobState = { ...current, ...patch, updatedAt: nowIso() };
+    await atomicWrite(jobId, "status.json", JSON.stringify(next, null, 2));
+    return next;
+  });
 }
 
 export function nowIso(): string {
