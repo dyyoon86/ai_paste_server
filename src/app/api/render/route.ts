@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 import { validateVideoSpec } from "@/lib/videoSpecSchema";
 import { getTheme, themeForSpec, recommendThemes } from "@/lib/themes";
 import { buildRenderPlan } from "@/lib/renderPlan";
+import { enrichSpec } from "@/lib/enrich";
 import {
   ensureJobsDir,
   initialState,
@@ -29,7 +30,7 @@ export async function POST(req: NextRequest) {
       { status: 422 },
     );
   }
-  const spec = validation.spec;
+  const spec = enrichSpec(validation.spec);
 
   // Resolve theme: explicit themeId (themeId or legacy rulePackId), else top recommendation.
   const wantedId =

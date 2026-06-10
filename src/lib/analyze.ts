@@ -1,6 +1,7 @@
 import { extractVideoSpecJson, ExtractError, type ExtractStrategy } from "./specParser";
 import { validateVideoSpec, type ValidationIssue, type VideoSpec } from "./videoSpecSchema";
 import { recommendThemes, CATEGORY_LABELS, type DesignTheme } from "./themes";
+import { enrichSpec } from "./enrich";
 
 /**
  * End-to-end analysis used by POST /api/analyze and reused on the client view.
@@ -107,7 +108,9 @@ export function analyzeInput(rawInput: string): AnalyzeResult {
     };
   }
 
-  const spec = validation.spec;
+  // Harness: fill missing per-scene icon/points so the center is never sparse,
+  // even when the brain omits them. Brain-provided values win.
+  const spec = enrichSpec(validation.spec);
   const recs = recommendThemes(spec);
 
   const allThemes: RecommendationView[] = recs.map((r) => toView(r.theme, r.reason));
