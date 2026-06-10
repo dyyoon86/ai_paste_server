@@ -320,7 +320,7 @@ function corpus(spec: VideoSpec): string {
 }
 
 /** Score & rank all 72 themes by category fit. Earlier themes win ties (curated priority). */
-export function recommendThemes(spec: VideoSpec, hookScore: number): ThemeRecommendation[] {
+export function recommendThemes(spec: VideoSpec): ThemeRecommendation[] {
   const hay = corpus(spec);
   const catScore: Partial<Record<ThemeCategory, number>> = {};
   const catReason: Partial<Record<ThemeCategory, string>> = {};
@@ -334,16 +334,10 @@ export function recommendThemes(spec: VideoSpec, hookScore: number): ThemeRecomm
       }
     }
   }
-  const strongHook = hookScore >= 75;
-
   const recs = themes.map((t, idx) => {
     let score = 1 + (catScore[t.category] ?? 0);
     const reasons: string[] = [];
     if (catReason[t.category]) reasons.push(catReason[t.category] as string);
-    if (strongHook && (t.category === "sport" || t.category === "neon" || t.category === "bold")) {
-      score += 2;
-      reasons.push("강한 훅과 임팩트 매치");
-    }
     // Curated within-category priority: earlier entries score slightly higher so
     // the canonical theme of a category surfaces first on ties.
     score += (themes.length - idx) * 0.001;

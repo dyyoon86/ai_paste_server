@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { randomUUID } from "node:crypto";
 import { validateVideoSpec } from "@/lib/videoSpecSchema";
 import { getTheme, themeForSpec, recommendThemes } from "@/lib/themes";
-import { scoreHook } from "@/lib/hookScore";
 import { buildRenderPlan } from "@/lib/renderPlan";
 import {
   ensureJobsDir,
@@ -33,7 +32,6 @@ export async function POST(req: NextRequest) {
   const spec = validation.spec;
 
   // Resolve theme: explicit themeId (themeId or legacy rulePackId), else top recommendation.
-  const hook = scoreHook(spec);
   const wantedId =
     (typeof body.themeId === "string" && body.themeId) ||
     (typeof body.rulePackId === "string" && body.rulePackId) ||
@@ -41,7 +39,7 @@ export async function POST(req: NextRequest) {
   const base = getTheme(wantedId);
   const rulePack = base
     ? themeForSpec(base, spec)
-    : recommendThemes(spec, hook.score)[0]?.theme;
+    : recommendThemes(spec)[0]?.theme;
   if (!rulePack) {
     return NextResponse.json({ error: "테마를 결정할 수 없습니다." }, { status: 400 });
   }

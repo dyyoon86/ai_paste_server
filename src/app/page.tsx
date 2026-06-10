@@ -1,12 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { SAMPLE_INPUT } from "@/lib/sampleInput";
 import type { AnalyzeResult, AnalyzeSuccess } from "@/lib/analyze";
 import type { JobState } from "@/lib/jobStore";
 import type { VideoSpec, Scene } from "@/lib/videoSpecSchema";
-import { scoreHook, suggestHooks, type HookScoreResult } from "@/lib/hookScore";
 
 const TRANSITIONS = ["fade", "slide", "zoom", "wipe", "cut"] as const;
 const EFFECTS = ["none", "punch-in", "punch-out"] as const;
@@ -53,16 +52,7 @@ export default function Home() {
 
   const success = analysis?.ok ? (analysis as AnalyzeSuccess) : null;
 
-  // The edited spec is the source of truth for preview/render/hook once analyzed.
-  // Hook score + suggestions recompute live, client-side (no server round-trip).
-  const liveHook: HookScoreResult | null = useMemo(
-    () => (editSpec ? scoreHook(editSpec) : null),
-    [editSpec],
-  );
-  const liveSuggestions = useMemo(
-    () => (editSpec ? suggestHooks(editSpec) : []),
-    [editSpec],
-  );
+  // The edited spec is the source of truth for preview/render once analyzed.
   const resolvedRes = editSpec
     ? ASPECT_RES[editSpec.aspect_ratio] ?? editSpec.resolution
     : { width: 0, height: 0 };
@@ -133,20 +123,6 @@ export default function Home() {
       setAnalyzing(false);
     }
   }, []);
-
-  // Apply a hook suggestion to scene 1 (live; hook score recomputes from editSpec).
-  const applyHook = useCallback(
-    (hookText: string) => {
-      setEditSpec((prev) => {
-        if (!prev || !prev.scenes[0]) return prev;
-        const scenes = prev.scenes.map((s, i) =>
-          i === 0 ? { ...s, screen_text: hookText } : s,
-        );
-        return { ...prev, scenes };
-      });
-    },
-    [],
-  );
 
   const stopPolling = useCallback(() => {
     if (pollRef.current) {
@@ -278,24 +254,38 @@ export default function Home() {
       )}
 
       {/* Analysis */}
-      {success && editSpec && liveHook && (
+      {success && editSpec && (
         <>
-          <AnalysisPanel
-            spec={editSpec}
-            hook={liveHook}
-            suggestions={liveSuggestions}
-            resolution={resolvedRes}
-            onApplyHook={applyHook}
-          />
-          <SpecEditor
-            spec={editSpec}
-            onTitle={(title) => setEditSpec((p) => (p ? { ...p, title } : p))}
-            onDuration={setDuration}
-            onCta={(cta) => setEditSpec((p) => (p ? { ...p, cta } : p))}
-            onPatchScene={patchScene}
-            onAddScene={addScene}
-            onRemoveScene={removeScene}
-          />
+          <AnalysisPanel spec={editSpec} resolution={resolvedRes} />
+
+          {/* Edit (left) + live Preview (right, sticky) side by side */}
+          <div className="mt-6 grid gap-6 lg:grid-cols-2 lg:items-start">
+            <SpecEditor
+              spec={editSpec}
+              onTitle={(title) => setEditSpec((p) => (p ? { ...p, title } : p))}
+              onDuration={setDuration}
+              onCta={(cta) => setEditSpec((p) => (p ? { ...p, cta } : p))}
+              onPatchScene={patchScene}
+              onAddScene={addScene}
+              onRemoveScene={removeScene}
+            />
+            <div className="lg:sticky lg:top-4">
+              <section className="rounded-3xl border border-line bg-surface p-5">
+                <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+                  <h2 className="text-base font-bold text-white">미리보기</h2>
+                  <button
+                    onClick={startRender}
+                    disabled={rendering}
+                    className="rounded-xl bg-brand px-5 py-2.5 text-sm font-bold text-white shadow-glow transition hover:brightness-110 disabled:opacity-40"
+                  >
+                    {rendering ? "렌더링 중..." : "MP4 생성"}
+                  </button>
+                </div>
+                <Preview spec={editSpec} themeId={selectedTheme} />
+              </section>
+            </div>
+          </div>
+
           <ThemePanel
             data={success}
             selected={selectedTheme}
@@ -303,20 +293,6 @@ export default function Home() {
             onViewDoc={openDoc}
             onOpenGallery={() => setShowAllThemes(true)}
           />
-
-          <section className="mt-6 rounded-3xl border border-line bg-surface p-5">
-            <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-              <h2 className="text-base font-bold text-white">미리보기</h2>
-              <button
-                onClick={startRender}
-                disabled={rendering}
-                className="rounded-xl bg-brand px-5 py-2.5 text-sm font-bold text-white shadow-glow transition hover:brightness-110 disabled:opacity-40"
-              >
-                {rendering ? "렌더링 중..." : "이 디자인으로 MP4 생성"}
-              </button>
-            </div>
-            <Preview spec={editSpec} themeId={selectedTheme} />
-          </section>
 
           {showAllThemes && (
             <ThemeGalleryModal
@@ -382,68 +358,31 @@ function ErrorPanel({ result }: { result: Extract<AnalyzeResult, { ok: false }> 
 
 function AnalysisPanel({
   spec,
-  hook,
-  suggestions,
   resolution,
-  onApplyHook,
 }: {
   spec: VideoSpec;
-  hook: HookScoreResult;
-  suggestions: string[];
   resolution: { width: number; height: number };
-  onApplyHook: (text: string) => void;
 }) {
-  const gradeColor =
-    hook.score >= 75 ? "text-emerald-400" : hook.score >= 60 ? "text-amber-400" : "text-red-400";
   return (
-    <section className="mt-6 grid gap-4 rounded-3xl border border-line bg-surface p-5 md:grid-cols-2">
-      <div>
-        <h2 className="mb-3 text-base font-bold text-white">분석</h2>
-        <dl className="space-y-2 text-sm">
-          <Row label="제목" value={spec.title} />
-          <Row label="핵심 메시지" value={spec.core_message} />
-          <Row label="영상 길이" value={`${spec.duration_seconds}초`} />
-          <Row label="장면 수" value={`${spec.scenes.length}개`} />
-          <Row label="해상도" value={`${resolution.width}×${resolution.height} (${spec.aspect_ratio})`} />
-        </dl>
-      </div>
-      <div>
-        <div className="flex items-baseline gap-3">
-          <h2 className="text-base font-bold text-white">훅 점수</h2>
-          <span className={`text-3xl font-black tabular ${gradeColor}`}>{hook.score}</span>
-          <span className={`text-sm font-semibold ${gradeColor}`}>{hook.grade}</span>
-        </div>
-        {hook.warning && (
-          <p className="mt-2 rounded-lg bg-amber-950/30 p-2 text-xs text-amber-300">{hook.warning}</p>
-        )}
-        <div className="mt-3 flex flex-wrap gap-1.5">
-          {hook.signals.map((s, i) => (
-            <span
-              key={i}
-              className={`rounded-full px-2 py-0.5 text-[11px] ${
-                s.delta >= 0 ? "bg-emerald-900/40 text-emerald-300" : "bg-red-900/40 text-red-300"
-              }`}
-            >
-              {s.label} {s.delta > 0 ? `+${s.delta}` : s.delta}
-            </span>
-          ))}
-        </div>
-        <div className="mt-4">
-          <p className="mb-1.5 text-xs font-semibold text-muted">훅 개선안 (클릭하면 첫 장면 교체)</p>
-          <div className="space-y-1.5">
-            {suggestions.map((s, i) => (
-              <button
-                key={i}
-                onClick={() => onApplyHook(s)}
-                className="block w-full rounded-lg border border-line2 bg-inset px-3 py-2 text-left text-sm text-fg transition hover:border-brand"
-              >
-                {i + 1}. {s}
-              </button>
-            ))}
-          </div>
-        </div>
+    <section className="mt-6 rounded-3xl border border-line bg-surface p-5">
+      <h2 className="mb-3 text-base font-bold text-white">분석</h2>
+      <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm">
+        <Meta label="제목" value={spec.title} />
+        <Meta label="길이" value={`${spec.duration_seconds}초`} />
+        <Meta label="장면" value={`${spec.scenes.length}개`} />
+        <Meta label="해상도" value={`${resolution.width}×${resolution.height} (${spec.aspect_ratio})`} />
+        {spec.core_message ? <Meta label="핵심" value={spec.core_message} /> : null}
       </div>
     </section>
+  );
+}
+
+function Meta({ label, value }: { label: string; value: string }) {
+  return (
+    <span className="inline-flex items-baseline gap-2">
+      <span className="text-subtle">{label}</span>
+      <span className="text-fg2">{value}</span>
+    </span>
   );
 }
 
@@ -468,7 +407,7 @@ function SpecEditor({
   const inputCls =
     "w-full rounded-lg border border-line2 bg-inset px-3 py-2 text-sm text-fg outline-none focus:border-brand";
   return (
-    <section className="mt-6 rounded-3xl border border-line bg-surface p-5">
+    <section className="rounded-3xl border border-line bg-surface p-5">
       <div className="mb-1 flex items-center justify-between gap-3">
         <h2 className="text-base font-bold text-white">내용 편집</h2>
         <button
@@ -479,7 +418,7 @@ function SpecEditor({
         </button>
       </div>
       <p className="mb-4 text-xs text-subtle">
-        JSON을 몰라도 됩니다. 여기서 고치면 미리보기와 훅 점수에 바로 반영됩니다.
+        JSON을 몰라도 됩니다. 여기서 고치면 옆 미리보기에 바로 반영됩니다.
       </p>
 
       {open && (
@@ -592,15 +531,6 @@ function SpecEditor({
         </div>
       )}
     </section>
-  );
-}
-
-function Row({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex gap-3">
-      <dt className="w-20 shrink-0 text-subtle">{label}</dt>
-      <dd className="text-fg">{value}</dd>
-    </div>
   );
 }
 

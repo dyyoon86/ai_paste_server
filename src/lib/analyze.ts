@@ -1,6 +1,5 @@
 import { extractVideoSpecJson, ExtractError, type ExtractStrategy } from "./specParser";
 import { validateVideoSpec, type ValidationIssue, type VideoSpec } from "./videoSpecSchema";
-import { scoreHook, suggestHooks, type HookScoreResult } from "./hookScore";
 import { recommendThemes, CATEGORY_LABELS, type DesignTheme } from "./themes";
 
 /**
@@ -57,8 +56,6 @@ export interface AnalyzeSuccess {
   strategy: ExtractStrategy;
   spec: VideoSpec;
   resolvedResolution: { width: number; height: number };
-  hook: HookScoreResult;
-  hookSuggestions: string[];
   recommendations: RecommendationView[];
   /** All themes (for the full picker), spec-adjusted, in recommendation order. */
   allThemes: RecommendationView[];
@@ -111,9 +108,7 @@ export function analyzeInput(rawInput: string): AnalyzeResult {
   }
 
   const spec = validation.spec;
-  const hook = scoreHook(spec);
-  const hookSuggestions = suggestHooks(spec);
-  const recs = recommendThemes(spec, hook.score);
+  const recs = recommendThemes(spec);
 
   const allThemes: RecommendationView[] = recs.map((r) => toView(r.theme, r.reason));
   const recommendations = allThemes.slice(0, 3);
@@ -123,8 +118,6 @@ export function analyzeInput(rawInput: string): AnalyzeResult {
     strategy: extracted.strategy,
     spec,
     resolvedResolution: ASPECT_TO_RES[spec.aspect_ratio] ?? spec.resolution,
-    hook,
-    hookSuggestions,
     recommendations,
     allThemes,
   };

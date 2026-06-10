@@ -68,11 +68,11 @@ describe("design themes", () => {
   });
 
   it("recommends the data category for stats and story for emotion", () => {
-    const stat = recommendThemes(baseSpec({ summary: "통계 데이터 리포트 숫자 증가 지표" }), 50);
+    const stat = recommendThemes(baseSpec({ summary: "통계 데이터 리포트 숫자 증가 지표" }));
     expect(stat[0].theme.category).toBe("data");
-    const emo = recommendThemes(baseSpec({ summary: "사람의 이야기와 감성 여정, 다큐 인터뷰" }), 50);
+    const emo = recommendThemes(baseSpec({ summary: "사람의 이야기와 감성 여정, 다큐 인터뷰" }));
     expect(emo[0].theme.category).toBe("story");
-    const sport = recommendThemes(baseSpec({ summary: "도전과 한계를 넘는 운동 훈련" }), 80);
+    const sport = recommendThemes(baseSpec({ summary: "도전과 한계를 넘는 운동 훈련" }));
     expect(sport[0].theme.category).toBe("sport");
   });
 
