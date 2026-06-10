@@ -109,6 +109,7 @@ export const Scene: React.FC<SceneProps> = ({ scene, index, total, animation, vi
         safeArea={visual.safeArea}
         theme={theme}
         kickerText={kickerText}
+        effect={scene.effect}
       />
     </AbsoluteFill>
   );

@@ -103,6 +103,29 @@ export function exitStyle(
   }
 }
 
+/**
+ * Per-scene "punch" emphasis (director-set). A fast, snappy zoom that grabs
+ * attention on key scenes. punch-in springs up from small; punch-out settles
+ * from large. Frame-based via spring() — no CSS animation.
+ */
+export function punchStyle(
+  localFrame: number,
+  fps: number,
+  effect: "none" | "punch-in" | "punch-out",
+): { transform: string } {
+  if (effect === "none") return { transform: "none" };
+  const s = spring({
+    frame: localFrame,
+    fps,
+    config: { damping: 10, mass: 0.5, stiffness: 220 },
+  });
+  const scale =
+    effect === "punch-in"
+      ? interpolate(s, [0, 1], [0.55, 1])
+      : interpolate(s, [0, 1], [1.6, 1]);
+  return { transform: `scale(${scale})` };
+}
+
 /** Emphasis applied to the main screen text. */
 export function textEmphasisStyle(
   localFrame: number,

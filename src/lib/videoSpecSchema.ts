@@ -21,6 +21,8 @@ export const sceneSchema = z.object({
   narration: z.string().default(""),
   visual_direction: z.string().default(""),
   transition: z.string().default("fade"),
+  /** Per-scene emphasis effect set by the "director" (none | punch-in | punch-out). */
+  effect: z.string().default("none"),
 });
 
 export const assetSchema = z.object({

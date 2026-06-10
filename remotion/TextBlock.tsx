@@ -1,8 +1,8 @@
 import React from "react";
 import { useCurrentFrame, useVideoConfig } from "remotion";
 import { fontFamily } from "./fonts";
-import { textEmphasisStyle } from "./animations";
-import type { PlanTheme } from "./planTypes";
+import { textEmphasisStyle, punchStyle } from "./animations";
+import type { PlanTheme, SceneEffect } from "./planTypes";
 
 interface TextBlockProps {
   screenText: string;
@@ -14,6 +14,7 @@ interface TextBlockProps {
   safeArea: number;
   theme: PlanTheme;
   kickerText: string;
+  effect: SceneEffect;
 }
 
 /**
@@ -30,11 +31,16 @@ export const TextBlock: React.FC<TextBlockProps> = ({
   safeArea,
   theme,
   kickerText,
+  effect,
 }) => {
   const frame = useCurrentFrame();
   const { fps, width } = useVideoConfig();
   const { typography: typo, layout } = theme;
-  const emph = textEmphasisStyle(frame, fps, emphasis);
+  // A director-set punch effect overrides the theme's default text emphasis.
+  const emph =
+    effect && effect !== "none"
+      ? punchStyle(frame, fps, effect)
+      : textEmphasisStyle(frame, fps, emphasis);
 
   const len = screenText.length;
   const base = width * 0.11 * typo.headlineScale;

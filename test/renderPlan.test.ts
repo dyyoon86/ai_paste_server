@@ -71,8 +71,8 @@ describe("style color theming", () => {
       core_message: "",
       cta: { enabled: false, text: "", action: "none" },
       scenes: [
-        { id: 1, start: 0, end: 3, screen_text: "0.3초", narration: "", visual_direction: "빨간 글로우", transition: "fade" },
-        { id: 2, start: 3, end: 6, screen_text: "차단 완료 ✅", narration: "", visual_direction: "초록 배지", transition: "fade" },
+        { id: 1, start: 0, end: 3, screen_text: "0.3초", narration: "", visual_direction: "빨간 글로우", transition: "fade", effect: "none" },
+        { id: 2, start: 3, end: 6, screen_text: "차단 완료 ✅", narration: "", visual_direction: "초록 배지", transition: "fade", effect: "none" },
       ],
       assets: [],
       render_notes: [],

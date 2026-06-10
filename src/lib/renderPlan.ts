@@ -22,6 +22,18 @@ export interface ScenePlan {
   /** Per-scene accent color (threat=red, resolution=green, else pack accent). */
   accent: string;
   mood: SceneMood;
+  /** Per-scene emphasis effect (director-set): none | punch-in | punch-out. */
+  effect: SceneEffect;
+}
+
+export type SceneEffect = "none" | "punch-in" | "punch-out";
+
+/** Normalize a free-form effect string to a known effect (lenient). */
+export function normalizeEffect(raw?: string): SceneEffect {
+  const v = (raw ?? "").toLowerCase();
+  if (v === "punch-out" || v === "zoom-out" || v.includes("줌아웃") || v.includes("아웃")) return "punch-out";
+  if (v === "punch-in" || v === "zoom-in" || v.includes("줌인") || v === "punch" || v.includes("확대")) return "punch-in";
+  return "none";
 }
 
 export type TextAlign = "center" | "left" | "bottom";
@@ -181,6 +193,7 @@ export function buildRenderPlan(
       transition: scene.transition || rulePack.animationRules.transition,
       mood,
       accent: moodAccent[mood],
+      effect: normalizeEffect(scene.effect),
     };
   });
 

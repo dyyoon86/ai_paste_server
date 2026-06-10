@@ -9,6 +9,7 @@ import type { VideoSpec, Scene } from "@/lib/videoSpecSchema";
 import { scoreHook, suggestHooks, type HookScoreResult } from "@/lib/hookScore";
 
 const TRANSITIONS = ["fade", "slide", "zoom", "wipe", "cut"] as const;
+const EFFECTS = ["none", "punch-in", "punch-out"] as const;
 
 const ASPECT_RES: Record<string, { width: number; height: number }> = {
   "9:16": { width: 1080, height: 1920 },
@@ -85,6 +86,7 @@ export default function Home() {
         narration: "",
         visual_direction: "",
         transition: "fade",
+        effect: "none",
       };
       return { ...prev, scenes: retime([...prev.scenes, next], prev.duration_seconds) };
     });
@@ -536,7 +538,7 @@ function SpecEditor({
                     삭제
                   </button>
                 </div>
-                <div className="grid gap-2 sm:grid-cols-[1fr_1fr_110px]">
+                <div className="grid gap-2 sm:grid-cols-[1fr_1fr]">
                   <input
                     className={inputCls}
                     placeholder="화면 문구 (짧게)"
@@ -549,17 +551,32 @@ function SpecEditor({
                     value={s.narration}
                     onChange={(e) => onPatchScene(i, { narration: e.target.value })}
                   />
-                  <select
-                    className={inputCls}
-                    value={TRANSITIONS.includes(s.transition as (typeof TRANSITIONS)[number]) ? s.transition : "fade"}
-                    onChange={(e) => onPatchScene(i, { transition: e.target.value })}
-                  >
-                    {TRANSITIONS.map((t) => (
-                      <option key={t} value={t}>
-                        {t}
-                      </option>
-                    ))}
-                  </select>
+                </div>
+                <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                  <label className="flex items-center gap-2">
+                    <span className="w-10 text-[11px] text-faint">전환</span>
+                    <select
+                      className={inputCls}
+                      value={TRANSITIONS.includes(s.transition as (typeof TRANSITIONS)[number]) ? s.transition : "fade"}
+                      onChange={(e) => onPatchScene(i, { transition: e.target.value })}
+                    >
+                      {TRANSITIONS.map((t) => (
+                        <option key={t} value={t}>{t}</option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="flex items-center gap-2">
+                    <span className="w-10 text-[11px] text-faint">강조</span>
+                    <select
+                      className={inputCls}
+                      value={EFFECTS.includes((s.effect as (typeof EFFECTS)[number]) ?? "none") ? (s.effect ?? "none") : "none"}
+                      onChange={(e) => onPatchScene(i, { effect: e.target.value })}
+                    >
+                      {EFFECTS.map((t) => (
+                        <option key={t} value={t}>{t === "none" ? "없음" : t === "punch-in" ? "패스트 줌인" : "패스트 줌아웃"}</option>
+                      ))}
+                    </select>
+                  </label>
                 </div>
               </div>
             ))}

@@ -17,7 +17,7 @@ function baseSpec(over: Partial<VideoSpec> = {}): VideoSpec {
     core_message: "",
     cta: { enabled: false, text: "", action: "none" },
     scenes: [
-      { id: 1, start: 0, end: 3, screen_text: "훅", narration: "", visual_direction: "", transition: "fade" },
+      { id: 1, start: 0, end: 3, screen_text: "훅", narration: "", visual_direction: "", transition: "fade", effect: "none" },
     ],
     assets: [],
     render_notes: [],
