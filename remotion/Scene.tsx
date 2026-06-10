@@ -1,14 +1,13 @@
 import React from "react";
-import { AbsoluteFill, useCurrentFrame, useVideoConfig } from "remotion";
+import { AbsoluteFill, Img, useCurrentFrame, useVideoConfig } from "remotion";
 import { TextBlock } from "./TextBlock";
-import { enterStyle, exitStyle } from "./animations";
+import { enterStyle } from "./animations";
 import type {
   ScenePlan,
   AnimationRules,
   VisualDefaults,
   PlanTheme,
   SceneEnter,
-  TransitionKind,
 } from "./planTypes";
 
 interface SceneProps {
@@ -20,42 +19,45 @@ interface SceneProps {
   theme: PlanTheme;
 }
 
-function normalizeTransition(raw: string, fallback: TransitionKind): TransitionKind {
-  const v = raw.toLowerCase();
-  if (v.includes("slide")) return "slide";
-  if (v.includes("wipe")) return "wipe";
-  if (v.includes("zoom")) return "zoom";
-  if (v.includes("cut")) return "cut";
-  if (v.includes("fade")) return "fade";
-  return fallback;
-}
-
 /**
- * A single scene placed inside a <Sequence>, so useCurrentFrame() is scene-local.
- * Combines an entrance animation, an exit transition, the per-scene accent
- * (threat/resolution), and the theme's layout (chip style, alignment).
+ * A single scene. Cross-scene transitions are handled by <TransitionSeries> in
+ * Video.tsx, so Scene only does its own entrance animation, optional background
+ * image (with a readability scrim), the per-scene accent, and layout.
  */
 export const Scene: React.FC<SceneProps> = ({ scene, index, total, animation, visual, theme }) => {
   const localFrame = useCurrentFrame();
   const { fps } = useVideoConfig();
 
   const enter = enterStyle(localFrame, fps, animation.sceneEnter as SceneEnter);
-  const transition = normalizeTransition(scene.transition, animation.transition);
-  const exit = exitStyle(localFrame, scene.durationInFrames, fps, transition);
 
   const accent = scene.accent || visual.accent;
   const { layout } = theme;
   const sceneTag = `0${index + 1}`.slice(-2);
   const kickerText = `SCENE ${sceneTag} / ${`0${total}`.slice(-2)}`;
+  const hasImage = typeof scene.image === "string" && /^(https?:|data:)/i.test(scene.image);
 
   return (
     <AbsoluteFill
       style={{
-        opacity: enter.opacity * exit.opacity,
-        transform: `${enter.transform} ${exit.transform}`.trim(),
-        clipPath: enter.clipPath ?? exit.clipPath,
+        opacity: enter.opacity,
+        transform: enter.transform,
+        clipPath: enter.clipPath,
       }}
     >
+      {hasImage ? (
+        <>
+          <AbsoluteFill>
+            <Img src={scene.image} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+          </AbsoluteFill>
+          {/* readability scrim so text stays legible over any image */}
+          <AbsoluteFill
+            style={{
+              background: `linear-gradient(180deg, ${visual.background}99 0%, ${visual.background}55 45%, ${visual.background}E6 100%)`,
+            }}
+          />
+        </>
+      ) : null}
+
       {layout.glow > 0 ? (
         <AbsoluteFill
           style={{

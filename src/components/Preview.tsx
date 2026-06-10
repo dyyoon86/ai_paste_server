@@ -77,12 +77,15 @@ export default function Preview({
     />
   );
 
-  // Slim seekable scene bar (always shown).
+  // Slim seekable scene bar (always shown). Segment widths are proportional to
+  // each scene's own duration (the composition total differs due to transition
+  // overlaps, so we normalize against the sum of scene durations).
+  const sceneFramesTotal = plan.scenes.reduce((a, s) => a + s.durationInFrames, 0) || 1;
   const bar = (
     <div className="flex h-8 w-full overflow-hidden rounded-lg border border-line2" style={{ width: dispW }}>
       {plan.scenes.map((s) => {
         const active = frame >= s.startFrame && frame < s.endFrame;
-        const pct = (s.durationInFrames / plan.durationInFrames) * 100;
+        const pct = (s.durationInFrames / sceneFramesTotal) * 100;
         return (
           <button
             key={s.id}

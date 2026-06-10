@@ -23,6 +23,8 @@ export const sceneSchema = z.object({
   transition: z.string().default("fade"),
   /** Per-scene emphasis effect set by the "director" (none | punch-in | punch-out). */
   effect: z.string().default("none"),
+  /** Optional per-scene image (http(s) URL or data: URL) rendered as background. */
+  image: z.string().optional(),
 });
 
 export const assetSchema = z.object({

@@ -27,7 +27,9 @@ describe("buildRenderPlan", () => {
     const { plan, spec } = planFromSample();
     expect(plan.compositionId).toBe(COMPOSITION_ID);
     expect(plan.fps).toBe(30);
-    expect(plan.durationInFrames).toBe(Math.ceil(spec.duration_seconds * 30));
+    // duration ≤ nominal because TransitionSeries overlaps transitions
+    expect(plan.durationInFrames).toBeGreaterThan(0);
+    expect(plan.durationInFrames).toBeLessThanOrEqual(Math.ceil(spec.duration_seconds * 30));
     expect(plan.scenes).toHaveLength(spec.scenes.length);
     expect(plan.scenes[0].startFrame).toBe(0);
     expect(plan.scenes[0].endFrame).toBe(90); // 3s * 30fps

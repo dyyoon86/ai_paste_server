@@ -51,6 +51,7 @@ export const defaultPlan: RenderPlan = {
       accent: "#7C3AED",
       mood: "neutral",
       effect: "none",
+      image: "",
     },
     {
       id: 2,
@@ -65,6 +66,7 @@ export const defaultPlan: RenderPlan = {
       accent: "#7C3AED",
       mood: "neutral",
       effect: "none",
+      image: "",
     },
     {
       id: 3,
@@ -79,6 +81,7 @@ export const defaultPlan: RenderPlan = {
       accent: "#34C759",
       mood: "resolution",
       effect: "none",
+      image: "",
     },
   ],
   ctaEnabled: false,

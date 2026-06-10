@@ -1,17 +1,35 @@
 import React from "react";
-import { AbsoluteFill, Sequence, useVideoConfig, useCurrentFrame, interpolate } from "remotion";
+import { AbsoluteFill, useVideoConfig, useCurrentFrame, interpolate } from "remotion";
+import { TransitionSeries, linearTiming } from "@remotion/transitions";
+import { fade } from "@remotion/transitions/fade";
+import { slide } from "@remotion/transitions/slide";
+import { wipe } from "@remotion/transitions/wipe";
+import type { TransitionPresentation } from "@remotion/transitions";
 import { Background } from "./Background";
 import { Scene } from "./Scene";
 import { fontFamily } from "./fonts";
-import type { RenderPlan } from "./planTypes";
+import { TRANSITION_FRAMES, normalizeTransitionKind, type RenderPlan } from "./planTypes";
 
 export type VideoProps = {
   plan: RenderPlan;
 };
 
+/** Map a transition kind to a Remotion presentation (zoom falls back to fade). */
+function presentationFor(kind: string): TransitionPresentation<Record<string, unknown>> {
+  switch (kind) {
+    case "slide":
+      return slide() as TransitionPresentation<Record<string, unknown>>;
+    case "wipe":
+      return wipe() as TransitionPresentation<Record<string, unknown>>;
+    default:
+      return fade() as TransitionPresentation<Record<string, unknown>>;
+  }
+}
+
 /**
- * Top-level composition body. Lays out every scene with <Sequence> (section 9.1)
- * and overlays a CTA card at the end when enabled.
+ * Top-level composition body. Scenes are laid out with <TransitionSeries> so
+ * each cross-scene transition (fade/slide/wipe; cut = none) is a real A→B
+ * transition. A CTA card overlays the end when enabled.
  */
 export const PasteVideo: React.FC<VideoProps> = ({ plan }) => {
   const { fps, durationInFrames } = useVideoConfig();
@@ -21,23 +39,35 @@ export const PasteVideo: React.FC<VideoProps> = ({ plan }) => {
     <AbsoluteFill style={{ fontFamily: fontFamily(plan.theme.typography.fontId) }}>
       <Background visual={visual} theme={plan.theme} />
 
-      {plan.scenes.map((scene, i) => (
-        <Sequence
-          key={scene.id}
-          from={scene.startFrame}
-          durationInFrames={scene.durationInFrames}
-          name={`Scene ${scene.id}`}
-        >
-          <Scene
-            scene={scene}
-            index={i}
-            total={plan.scenes.length}
-            animation={plan.animationRules}
-            visual={visual}
-            theme={plan.theme}
-          />
-        </Sequence>
-      ))}
+      <TransitionSeries>
+        {plan.scenes.flatMap((scene, i) => {
+          const kind = normalizeTransitionKind(scene.transition);
+          const sequence = (
+            <TransitionSeries.Sequence key={`s${scene.id}`} durationInFrames={scene.durationInFrames}>
+              <Scene
+                scene={scene}
+                index={i}
+                total={plan.scenes.length}
+                animation={plan.animationRules}
+                visual={visual}
+                theme={plan.theme}
+              />
+            </TransitionSeries.Sequence>
+          );
+          // Insert a transition before this scene (between i-1 and i) unless it's a hard cut.
+          if (i > 0 && kind !== "cut") {
+            return [
+              <TransitionSeries.Transition
+                key={`t${scene.id}`}
+                presentation={presentationFor(kind)}
+                timing={linearTiming({ durationInFrames: TRANSITION_FRAMES })}
+              />,
+              sequence,
+            ];
+          }
+          return [sequence];
+        })}
+      </TransitionSeries>
 
       {plan.ctaEnabled && plan.ctaText ? (
         <CtaOverlay

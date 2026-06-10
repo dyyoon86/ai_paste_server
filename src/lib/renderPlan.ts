@@ -24,9 +24,25 @@ export interface ScenePlan {
   mood: SceneMood;
   /** Per-scene emphasis effect (director-set): none | punch-in | punch-out. */
   effect: SceneEffect;
+  /** Optional per-scene background image (http(s) or data: URL); "" = none. */
+  image: string;
 }
 
 export type SceneEffect = "none" | "punch-in" | "punch-out";
+export type TransitionKindPlan = "cut" | "fade" | "slide" | "zoom" | "wipe";
+
+/** Frames a cross-scene transition overlaps (≈0.4s @30fps). */
+export const TRANSITION_FRAMES = 12;
+
+/** Normalize a free-form transition string to a known kind (default fade). */
+export function normalizeTransitionKind(raw?: string): TransitionKindPlan {
+  const v = (raw ?? "").toLowerCase();
+  if (v.includes("slide")) return "slide";
+  if (v.includes("wipe")) return "wipe";
+  if (v.includes("zoom")) return "zoom";
+  if (v.includes("cut")) return "cut";
+  return "fade";
+}
 
 /** Normalize a free-form effect string to a known effect (lenient). */
 export function normalizeEffect(raw?: string): SceneEffect {
@@ -194,15 +210,26 @@ export function buildRenderPlan(
       mood,
       accent: moodAccent[mood],
       effect: normalizeEffect(scene.effect),
+      image: scene.image ?? "",
     };
   });
+
+  // TransitionSeries overlaps each cross-scene transition (except hard cuts), so
+  // the real timeline is shorter than the nominal duration by the overlaps.
+  // The composition duration must match the series total to avoid a frozen tail.
+  const sceneFramesTotal = scenes.reduce((a, s) => a + s.durationInFrames, 0);
+  let overlap = 0;
+  scenes.forEach((s, i) => {
+    if (i > 0 && normalizeTransitionKind(s.transition) !== "cut") overlap += TRANSITION_FRAMES;
+  });
+  const renderedDuration = Math.max(1, sceneFramesTotal - overlap);
 
   return {
     compositionId: COMPOSITION_ID,
     fps,
     width,
     height,
-    durationInFrames,
+    durationInFrames: renderedDuration,
     background: visualDefaults.background,
     rulePackId: rulePack.id,
     rulePackName: rulePack.name,

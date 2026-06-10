@@ -517,6 +517,42 @@ function SpecEditor({
                     </select>
                   </label>
                 </div>
+                <div className="mt-2 flex items-center gap-2">
+                  <span className="w-10 shrink-0 text-[11px] text-faint">이미지</span>
+                  <input
+                    className={inputCls}
+                    placeholder="이미지 URL (선택)"
+                    value={s.image && !s.image.startsWith("data:") ? s.image : ""}
+                    onChange={(e) => onPatchScene(i, { image: e.target.value })}
+                  />
+                  <label className="shrink-0 cursor-pointer rounded-lg border border-line2 px-3 py-2 text-[11px] text-fg2 hover:border-brand">
+                    파일
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => {
+                        const f = e.target.files?.[0];
+                        if (!f) return;
+                        const r = new FileReader();
+                        r.onload = () => onPatchScene(i, { image: String(r.result) });
+                        r.readAsDataURL(f);
+                      }}
+                    />
+                  </label>
+                  {s.image ? (
+                    <button
+                      onClick={() => onPatchScene(i, { image: "" })}
+                      className="shrink-0 text-[11px] text-faint hover:text-red-400"
+                    >
+                      제거
+                    </button>
+                  ) : null}
+                </div>
+                {s.image ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={s.image} alt="" className="mt-2 h-14 w-full rounded-lg object-cover" />
+                ) : null}
               </div>
             ))}
           </div>

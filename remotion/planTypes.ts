@@ -6,6 +6,18 @@
 
 export type SceneEnter = "fade" | "slide-up" | "zoom" | "wipe" | "pop";
 export type SceneEffect = "none" | "punch-in" | "punch-out";
+
+/** Must match TRANSITION_FRAMES in src/lib/renderPlan.ts (composition-duration contract). */
+export const TRANSITION_FRAMES = 12;
+
+export function normalizeTransitionKind(raw?: string): "cut" | "fade" | "slide" | "zoom" | "wipe" {
+  const v = (raw ?? "").toLowerCase();
+  if (v.includes("slide")) return "slide";
+  if (v.includes("wipe")) return "wipe";
+  if (v.includes("zoom")) return "zoom";
+  if (v.includes("cut")) return "cut";
+  return "fade";
+}
 export type TextEmphasis = "highlight" | "scale" | "underline" | "none";
 export type TransitionKind = "cut" | "fade" | "slide" | "wipe" | "zoom";
 
@@ -24,6 +36,7 @@ export interface ScenePlan {
   accent: string;
   mood: SceneMood;
   effect: SceneEffect;
+  image: string;
 }
 
 export interface VisualDefaults {
