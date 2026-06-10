@@ -494,6 +494,15 @@ function SpecEditor({
                   </label>
                 </div>
                 <div className="mt-2 flex items-center gap-2">
+                  <span className="w-10 shrink-0 text-[11px] text-faint">아이콘</span>
+                  <input
+                    className={inputCls}
+                    placeholder="이모지 (예: 🕐 ✅ 💡 📊)"
+                    value={s.icon ?? ""}
+                    onChange={(e) => onPatchScene(i, { icon: e.target.value })}
+                  />
+                </div>
+                <div className="mt-2 flex items-center gap-2">
                   <span className="w-10 shrink-0 text-[11px] text-faint">이미지</span>
                   <input
                     className={inputCls}

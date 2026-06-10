@@ -15,6 +15,7 @@ interface TextBlockProps {
   theme: PlanTheme;
   kickerText: string;
   effect: SceneEffect;
+  icon?: string;
 }
 
 /**
@@ -32,6 +33,7 @@ export const TextBlock: React.FC<TextBlockProps> = ({
   theme,
   kickerText,
   effect,
+  icon,
 }) => {
   const frame = useCurrentFrame();
   const { fps, width } = useVideoConfig();
@@ -81,6 +83,10 @@ export const TextBlock: React.FC<TextBlockProps> = ({
 
   return (
     <div style={container}>
+      {icon ? (
+        <div style={{ fontSize: width * 0.16, lineHeight: 1, transform: emph.transform }}>{icon}</div>
+      ) : null}
+
       {layout.kicker && kickerText ? (
         <div
           style={{

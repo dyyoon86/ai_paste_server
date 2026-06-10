@@ -35,7 +35,7 @@ export const defaultPlan: RenderPlan = {
     name: "Midnight Pop",
     vibe: "어두운 배경에 보라빛, 통통 튀는 기본 숏폼",
     typography: { fontId: "sans", weightHeadline: 900, upper: false, letterSpacing: -1, headlineScale: 1, italic: false },
-    layout: { align: "center", kicker: false, accentBar: false, chip: "number", decoration: "none", outline: false, glow: 0.7, isLight: false },
+    layout: { align: "center", kicker: false, accentBar: false, chip: "number", decoration: "none", outline: false, glow: 0.7, isLight: false, subtitle: false },
   },
   scenes: [
     {
@@ -52,6 +52,7 @@ export const defaultPlan: RenderPlan = {
       mood: "neutral",
       effect: "none",
       image: "",
+      icon: "",
     },
     {
       id: 2,
@@ -67,6 +68,7 @@ export const defaultPlan: RenderPlan = {
       mood: "neutral",
       effect: "none",
       image: "",
+      icon: "",
     },
     {
       id: 3,
@@ -82,6 +84,7 @@ export const defaultPlan: RenderPlan = {
       mood: "resolution",
       effect: "none",
       image: "",
+      icon: "",
     },
   ],
   ctaEnabled: false,

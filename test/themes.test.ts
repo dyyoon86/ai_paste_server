@@ -37,10 +37,10 @@ const ALL_HEX = /^#[0-9a-fA-F]{6}$/;
 const VALID_FONTS = new Set(["sans", "serif", "plex", "impact", "geo", "round", "condensed", "brush", "myeongjo"]);
 
 describe("design themes", () => {
-  it("has 72 distinct templates, each a valid full visual identity", () => {
-    expect(themes.length).toBe(72);
+  it("has 72+ distinct templates, each a valid full visual identity", () => {
+    expect(themes.length).toBeGreaterThanOrEqual(72);
     const ids = new Set(themes.map((t) => t.id));
-    expect(ids.size).toBe(72);
+    expect(ids.size).toBe(themes.length);
     for (const t of themes) {
       expect(t.requiredSkillDocIds.length).toBeGreaterThan(0);
       for (const id of t.requiredSkillDocIds) {
@@ -54,12 +54,21 @@ describe("design themes", () => {
     }
   });
 
-  it("has 12 categories of 6 themes each", () => {
+  it("groups by category with the 12 base categories at 6 each", () => {
     const groups = themesByCategory();
-    expect(groups.length).toBe(12);
+    expect(groups.length).toBeGreaterThanOrEqual(12);
+    const base = ["sport", "tech", "editorial", "luxury", "neon", "pastel", "corporate", "data", "story", "bold", "retro", "nature"];
     for (const g of groups) {
-      expect(g.themes.length, g.category).toBe(6);
+      if (base.includes(g.category)) expect(g.themes.length, g.category).toBe(6);
+      else expect(g.themes.length, g.category).toBeGreaterThanOrEqual(1);
     }
+  });
+
+  it("has an explainer template with subtitle enabled", () => {
+    const ex = getTheme("explainer-dark");
+    expect(ex).toBeTruthy();
+    expect(ex!.layout.subtitle).toBe(true);
+    expect(recommendThemes(baseSpec({ summary: "오늘은 정리 방법을 설명하는 가이드 영상" }))[0].theme.category).toBe("explainer");
   });
 
   it("covers light + dark themes and many fonts", () => {

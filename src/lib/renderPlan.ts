@@ -26,8 +26,12 @@ export interface ScenePlan {
   effect: SceneEffect;
   /** Optional per-scene background image (http(s) or data: URL); "" = none. */
   image: string;
+  /** Optional per-scene icon (emoji) shown as a large center graphic; "" = none. */
+  icon: string;
   /** Optional per-scene narration audio (data: URL), injected server-side at render. */
   audioUrl?: string;
+  /** Word timings for the karaoke subtitle (sec from scene start). Injected at render. */
+  subtitleWords?: Array<{ t: number; w: string }>;
 }
 
 export type SceneEffect = "none" | "punch-in" | "punch-out";
@@ -80,6 +84,8 @@ export interface ThemeLayout {
   /** Background/text glow strength 0..1. */
   glow: number;
   isLight: boolean;
+  /** Explainer mode: show narration as a karaoke subtitle at the bottom. */
+  subtitle?: boolean;
 }
 
 /** Compact theme embedded into the render plan so the composition can read it. */
@@ -213,6 +219,7 @@ export function buildRenderPlan(
       accent: moodAccent[mood],
       effect: normalizeEffect(scene.effect),
       image: scene.image ?? "",
+      icon: scene.icon ?? "",
     };
   });
 

@@ -236,8 +236,9 @@ async function injectNarrationAudio(jobId: string, plan: RenderPlan): Promise<vo
     const text = (s.narration ?? "").trim();
     if (!text) continue;
     try {
-      const { dataUrl, durationSec } = await synthesizeScene(audioDir, s.id, text);
+      const { dataUrl, durationSec, words } = await synthesizeScene(audioDir, s.id, text);
       s.audioUrl = dataUrl;
+      if (words.length > 0) s.subtitleWords = words;
       const needed = Math.ceil(durationSec * fps) + padFrames;
       if (needed > s.durationInFrames) s.durationInFrames = needed;
     } catch {

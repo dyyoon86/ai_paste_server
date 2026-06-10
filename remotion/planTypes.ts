@@ -37,7 +37,9 @@ export interface ScenePlan {
   mood: SceneMood;
   effect: SceneEffect;
   image: string;
+  icon: string;
   audioUrl?: string;
+  subtitleWords?: Array<{ t: number; w: string }>;
 }
 
 export interface VisualDefaults {
@@ -80,6 +82,7 @@ export interface ThemeLayout {
   outline: boolean;
   glow: number;
   isLight: boolean;
+  subtitle?: boolean;
 }
 
 export interface PlanTheme {

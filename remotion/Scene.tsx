@@ -1,6 +1,7 @@
 import React from "react";
 import { AbsoluteFill, Audio, Img, useCurrentFrame, useVideoConfig } from "remotion";
 import { TextBlock } from "./TextBlock";
+import { Subtitle } from "./Subtitle";
 import { enterStyle } from "./animations";
 import type {
   ScenePlan,
@@ -35,6 +36,7 @@ export const Scene: React.FC<SceneProps> = ({ scene, index, total, animation, vi
   const sceneTag = `0${index + 1}`.slice(-2);
   const kickerText = `SCENE ${sceneTag} / ${`0${total}`.slice(-2)}`;
   const hasImage = typeof scene.image === "string" && /^(https?:|data:)/i.test(scene.image);
+  const subtitleOn = layout.subtitle === true;
 
   return (
     <AbsoluteFill
@@ -105,7 +107,7 @@ export const Scene: React.FC<SceneProps> = ({ scene, index, total, animation, vi
 
       <TextBlock
         screenText={scene.screenText}
-        narration={scene.narration}
+        narration={subtitleOn ? "" : scene.narration}
         accent={accent}
         text={visual.text}
         mutedText={visual.mutedText}
@@ -114,7 +116,17 @@ export const Scene: React.FC<SceneProps> = ({ scene, index, total, animation, vi
         theme={theme}
         kickerText={kickerText}
         effect={scene.effect}
+        icon={scene.icon}
       />
+
+      {subtitleOn && scene.narration ? (
+        <Subtitle
+          words={scene.subtitleWords}
+          narration={scene.narration}
+          accent={accent}
+          sceneDurationInFrames={scene.durationInFrames}
+        />
+      ) : null}
     </AbsoluteFill>
   );
 };

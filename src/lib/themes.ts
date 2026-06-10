@@ -25,7 +25,8 @@ export type ThemeCategory =
   | "story"
   | "bold"
   | "retro"
-  | "nature";
+  | "nature"
+  | "explainer";
 
 export const CATEGORY_LABELS: Record<ThemeCategory, string> = {
   sport: "스포츠 · 임팩트",
@@ -40,6 +41,7 @@ export const CATEGORY_LABELS: Record<ThemeCategory, string> = {
   bold: "볼드 · 타이포",
   retro: "레트로 · 빈티지",
   nature: "내추럴 · 웰니스",
+  explainer: "설명형 · Explainer",
 };
 
 const CATEGORY_BESTFOR: Record<ThemeCategory, string[]> = {
@@ -55,6 +57,7 @@ const CATEGORY_BESTFOR: Record<ThemeCategory, string[]> = {
   bold: ["선언", "포스터", "타이포"],
   retro: ["레트로", "복고", "감성"],
   nature: ["자연", "웰니스", "친환경"],
+  explainer: ["설명", "교육", "정보", "해설"],
 };
 
 export type DesignTheme = RenderStyle &
@@ -73,6 +76,8 @@ interface ThemeInput {
   name: string;
   category: ThemeCategory;
   vibe: string;
+  description?: string;
+  bestFor?: string[];
   font: string;
   // palette
   bg: string;
@@ -98,6 +103,7 @@ interface ThemeInput {
   outline?: boolean;
   glow?: number;
   light?: boolean;
+  subtitle?: boolean;
   // motion overrides
   enter?: Anim["sceneEnter"];
   emph?: Anim["textEmphasis"];
@@ -125,14 +131,15 @@ function T(i: ThemeInput): DesignTheme {
     outline: i.outline ?? false,
     glow: i.glow ?? 0.5,
     isLight: i.light ?? false,
+    subtitle: i.subtitle ?? false,
   };
   return {
     id: i.id,
     name: i.name,
     category: i.category,
     vibe: i.vibe,
-    description: i.vibe,
-    bestFor: CATEGORY_BESTFOR[i.category],
+    description: i.description ?? i.vibe,
+    bestFor: i.bestFor ?? CATEGORY_BESTFOR[i.category],
     requiredSkillDocIds: i.skills ?? CORE_SKILLS,
     optionalSkillDocIds: i.optionalSkills ?? ["google-fonts", "measuring-text"],
     compositionDefaults: { ...BASE_COMPOSITION },
@@ -254,6 +261,10 @@ export const themes: DesignTheme[] = [
   T({ id: "sage", name: "Sage", category: "nature", vibe: "세이지 — 연녹 세이지, 부드러운 둥근체", font: "round", bg: "#EAF0E6", sf: "#F6F9F2", tx: "#27322A", mt: "#74857A", ac: "#6FA37C", a2: "#C7A24B", radius: 24, safe: 112, weight: 400, scale: 1.02, chip: "number", glow: 0.3, light: true, enter: "pop", emph: "scale", trans: "fade" }),
   T({ id: "stone", name: "Stone", category: "nature", vibe: "스톤 — 그레이 스톤 + 테라코타, 미니멀", font: "geo", bg: "#1A1917", sf: "#252320", tx: "#EDEAE3", mt: "#A8A299", ac: "#C8744B", a2: "#9AA39A", radius: 10, safe: 114, weight: 800, scale: 0.98, align: "left", kicker: true, chip: "none", deco: "underline", glow: 0.15, enter: "slide-up", emph: "none", trans: "slide" }),
   T({ id: "dawn", name: "Dawn", category: "nature", vibe: "던 — 새벽 하늘 그라데, 핑크/블루, 잔잔함", font: "serif", bg: "#141225", sf: "#201C38", tx: "#F0ECFB", mt: "#B3AECB", ac: "#F4A6C0", a2: "#8FB9F0", radius: 12, safe: 114, weight: 700, scale: 0.98, kicker: true, chip: "none", deco: "rules", glow: 0.4, enter: "fade", emph: "none", trans: "fade" }),
+
+  // ── EXPLAINER (설명 애니메이션: 중앙 모션 타이포 + 아이콘 + 하단 카라오케 자막) ──
+  T({ id: "explainer-dark", name: "Explainer Dark", category: "explainer", vibe: "설명형 — 검은 배경, 중앙 모션 타이포 + 아이콘, 하단 어절 카라오케 자막", description: "내레이션에 맞춰 중앙 타이포·아이콘이 전개되고, 하단 자막이 말하는 어절마다 포인트 컬러로 바뀐다.", bestFor: ["설명", "정보", "교육", "해설"], skills: ["text-animations", "timing", "sequencing", "display-captions"], font: "sans", bg: "#000000", sf: "#0D0D0D", tx: "#FFFFFF", mt: "#B8B8B8", ac: "#FFC400", a2: "#22D3EE", radius: 16, safe: 110, weight: 900, scale: 1.05, kicker: true, chip: "none", deco: "none", glow: 0.0, subtitle: true, enter: "slide-up", emph: "scale", trans: "fade" }),
+  T({ id: "explainer-cyan", name: "Explainer Cyan", category: "explainer", vibe: "설명형(시안) — 검은 배경, 시안 포인트, 중앙 타이포+아이콘, 하단 카라오케", description: "Explainer Dark의 시안 포인트 버전.", bestFor: ["설명", "정보", "테크 해설"], skills: ["text-animations", "timing", "sequencing", "display-captions"], font: "geo", bg: "#04070A", sf: "#0B1116", tx: "#FFFFFF", mt: "#9FB3BE", ac: "#22D3EE", a2: "#FFC400", radius: 16, safe: 110, weight: 800, scale: 1.04, kicker: true, chip: "none", deco: "none", glow: 0.0, subtitle: true, enter: "slide-up", emph: "scale", trans: "slide" }),
 ];
 
 export function getTheme(id: string): DesignTheme | undefined {
@@ -303,7 +314,7 @@ const SIGNALS: Array<{ words: string[]; cats: Partial<Record<ThemeCategory, numb
   { words: ["ai", "보안", "기술", "테크", "개발", "시스템", "클라우드", "api", "플랫폼", "소프트웨어"], cats: { tech: 4, corporate: 1 }, reason: "테크/제품" },
   { words: ["제품", "서비스", "기능", "출시", "데모", "앱", "솔루션", "런칭"], cats: { tech: 2, corporate: 2 }, reason: "제품/서비스" },
   { words: ["기업", "공지", "발표", "ir", "주주", "실적", "정책"], cats: { corporate: 4 }, reason: "기업/공지" },
-  { words: ["강의", "튜토리얼", "교육", "방법", "배우", "설명", "가이드", "단계"], cats: { tech: 2, corporate: 1, editorial: 1 }, reason: "설명/교육" },
+  { words: ["강의", "튜토리얼", "교육", "방법", "배우", "설명", "가이드", "단계", "정리", "해설", "꿀팁", "노하우"], cats: { explainer: 5, tech: 1, corporate: 1 }, reason: "설명/교육형" },
   { words: ["럭셔리", "프리미엄", "브랜드", "피치", "투자", "고급", "비전", "명품"], cats: { luxury: 4, editorial: 1 }, reason: "럭셔리/프리미엄" },
   { words: ["이야기", "스토리", "감성", "사람", "여정", "마음", "추억", "다큐", "인터뷰"], cats: { story: 4, retro: 1 }, reason: "스토리/감성" },
   { words: ["이벤트", "할인", "게임", "챌린지", "바이럴", "지금", "단독", "한정", "파티"], cats: { neon: 4, sport: 1 }, reason: "이벤트/바이럴" },

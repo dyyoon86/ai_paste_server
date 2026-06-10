@@ -25,6 +25,8 @@ export const sceneSchema = z.object({
   effect: z.string().default("none"),
   /** Optional per-scene image (http(s) URL or data: URL) rendered as background. */
   image: z.string().optional(),
+  /** Optional per-scene icon (emoji) shown as a large center graphic. */
+  icon: z.string().optional(),
 });
 
 export const assetSchema = z.object({
