@@ -1,6 +1,7 @@
 import type { Config } from "tailwindcss";
 
-// Tokens mirror DESIGN.md §2–4. Components reference these, never raw hex.
+// Tokens mirror DESIGN.md. Components reference these, never raw hex.
+// "Quiet studio" palette: warm near-black, off-white ink, one coral accent.
 const config: Config = {
   content: [
     "./src/app/**/*.{ts,tsx}",
@@ -9,37 +10,39 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        canvas: "#0B0B0F",
-        surface: "#131319",
-        inset: "#0D0D12",
-        line: "#24242F",
-        line2: "#2C2C3A",
-        line3: "#3A3A4A",
-        fg: "#F2F2F6",
-        fg2: "#D7D7E2",
-        muted: "#A6A6B6",
-        subtle: "#76767F",
-        faint: "#5B5B68",
-        accent: "#7C3AED",
-        "accent-fg": "#A78BFA",
+        canvas: "#0A0A0B",
+        surface: "#141416",
+        inset: "#0F0F11",
+        line: "#222225",
+        line2: "#2B2B2F",
+        line3: "#3A3A3F",
+        fg: "#ECEAE6",
+        fg2: "#C7C5C0",
+        muted: "#8B8A86",
+        subtle: "#69696A",
+        faint: "#4D4D4C",
+        accent: "#FF5C38",
+        "accent-fg": "#FF8A6B",
         "accent-2": "#22D3EE",
         success: "#34C759",
         danger: "#FF453A",
         warning: "#FFB020",
-        // legacy alias kept so existing `brand`/`brand-fg` classes resolve
-        brand: { DEFAULT: "#7C3AED", fg: "#A78BFA" },
+        // legacy alias → now the coral accent (existing brand/* classes re-skin)
+        brand: { DEFAULT: "#FF5C38", fg: "#FF8A6B" },
       },
       borderRadius: {
-        sm: "10px",
-        md: "14px",
-        lg: "20px",
-        xl: "28px",
+        sm: "8px",
+        md: "10px",
+        lg: "14px",
+        xl: "16px",
+        "2xl": "14px",
+        "3xl": "18px",
       },
       fontFamily: {
         sans: ["var(--font-sans)"],
       },
       boxShadow: {
-        glow: "0 8px 30px rgba(124,58,237,0.35)",
+        glow: "0 6px 24px rgba(255,92,56,0.22)",
       },
     },
   },

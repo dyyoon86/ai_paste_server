@@ -24,28 +24,31 @@
 
 Dark theme only (matches the product's output bias). Hex → token name.
 
+Quiet studio: warm near-black, off-white ink, one coral accent. (Deliberately
+NOT the violet-on-black + glow look that reads as generic AI.)
+
 | Token | Hex | Use |
 |-------|-----|-----|
-| `canvas` | `#0B0B0F` | page background |
-| `surface` | `#131319` | panels / cards |
-| `inset` | `#0D0D12` | inputs, code, nested wells |
-| `line` | `#24242F` | default hairline border |
-| `line2` | `#2C2C3A` | stronger border / neutral button bg |
-| `line3` | `#3A3A4A` | hover border / pressed neutral |
-| `fg` | `#F2F2F6` | primary text |
-| `fg2` | `#D7D7E2` | secondary emphasis text |
-| `muted` | `#A6A6B6` | labels, secondary copy |
-| `subtle` | `#76767F` | tertiary copy, meta |
-| `faint` | `#5B5B68` | footnotes, disabled hints |
-| `accent` | `#7C3AED` | primary actions, selection, live state |
-| `accent-fg` | `#A78BFA` | accent text on dark |
+| `canvas` | `#0A0A0B` | page background |
+| `surface` | `#141416` | panels / cards |
+| `inset` | `#0F0F11` | inputs, code, nested wells |
+| `line` | `#222225` | default hairline border |
+| `line2` | `#2B2B2F` | stronger border / neutral button bg |
+| `line3` | `#3A3A3F` | hover border / pressed neutral |
+| `fg` | `#ECEAE6` | primary text (warm off-white, not pure #fff) |
+| `fg2` | `#C7C5C0` | secondary emphasis text |
+| `muted` | `#8B8A86` | labels, secondary copy |
+| `subtle` | `#69696A` | tertiary copy, meta |
+| `faint` | `#4D4D4C` | footnotes, disabled hints |
+| `accent` | `#FF5C38` | primary actions, selection, live state (coral) |
+| `accent-fg` | `#FF8A6B` | accent text on dark |
 | `accent-2` | `#22D3EE` | rare secondary highlight |
 | `success` | `#34C759` | completed / safe |
 | `danger` | `#FF453A` | errors / failures |
-| `warning` | `#FFB020` | weak-hook / caution |
+| `warning` | `#FFB020` | caution |
 
-Accent `#7C3AED` intentionally matches the default render palette so the UI and
-the produced video share a brand color.
+Primary buttons are `bg-accent text-canvas` (dark ink on coral) for crisp,
+intentional contrast. Use the accent sparingly — most chrome is neutral.
 
 ## 3. Typography
 
@@ -70,9 +73,8 @@ the produced video share a brand color.
 
 - **Panel/Card:** `bg-surface`, `border border-line`, radius `lg`. Compact items
   inside use `bg-inset border-line`.
-- **Primary button:** `bg-accent text-white`, radius `md`, weight 700, hover
-  `brightness-110`, disabled `opacity-40`. Optional soft glow
-  `shadow-[0_8px_30px_rgba(124,58,237,0.35)]` for the main CTA only.
+- **Primary button:** `bg-accent text-canvas` (dark ink on coral), radius `md`,
+  weight 600, hover `brightness-105`, disabled `opacity-30`. No glow.
 - **Neutral button:** `bg-line2 text-fg2` hover `bg-line3`; or ghost
   `border border-line text-muted` hover `border-line3`.
 - **Chip/Tag:** `border border-line2 text-muted`, radius `sm`, 11px.
@@ -89,5 +91,5 @@ the produced video share a brand color.
 
 ## 7. Backdrop
 
-Subtle, single soft radial glow of `accent` at ~12% near the top, fading out, on
-top of `canvas`. Keeps the page from feeling flat without competing with panels.
+Flat `canvas` — no decorative glow/gradient (that reads as generic AI). Depth
+comes from hairline borders and surface elevation, not glows.

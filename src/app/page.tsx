@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
-import { SAMPLE_INPUT } from "@/lib/sampleInput";
 import type { AnalyzeResult, AnalyzeSuccess } from "@/lib/analyze";
 import type { JobState } from "@/lib/jobStore";
 import type { VideoSpec, Scene } from "@/lib/videoSpecSchema";
@@ -38,7 +37,7 @@ const Preview = dynamic(() => import("@/components/Preview"), {
 type DocView = { id: string; title: string; path: string; rawMarkdown: string } | null;
 
 export default function Home() {
-  const [input, setInput] = useState(SAMPLE_INPUT);
+  const [input, setInput] = useState("");
   const [analysis, setAnalysis] = useState<AnalyzeResult | null>(null);
   const [analyzing, setAnalyzing] = useState(false);
   const [selectedTheme, setSelectedTheme] = useState<string | null>(null);
@@ -194,56 +193,34 @@ export default function Home() {
   return (
     <main className="mx-auto max-w-5xl px-5 py-10">
       {/* Header */}
-      <header className="mb-9">
-        <div className="flex items-center gap-3">
-          <span className="inline-flex h-10 w-10 items-center justify-center rounded-md bg-accent text-xl font-black text-white shadow-glow">
-            P
-          </span>
-          <h1 className="text-[22px] font-extrabold tracking-tight text-fg">PasteMotion</h1>
-          <span className="rounded-sm border border-line2 px-2 py-0.5 text-[11px] uppercase tracking-wide text-subtle">
-            Remotion Studio
-          </span>
+      <header className="mb-10 flex items-center justify-between">
+        <div className="flex items-center gap-2.5">
+          <span className="h-2.5 w-2.5 rounded-full bg-accent" />
+          <span className="text-[15px] font-semibold tracking-tight text-fg">PasteMotion</span>
         </div>
-        <p className="mt-4 text-[28px] font-extrabold leading-tight tracking-tight text-fg">
-          Claude 결과를 붙여넣으면
-          <br className="hidden sm:block" /> 영상 초안이 됩니다
-        </p>
-        <p className="mt-2 max-w-xl text-sm leading-relaxed text-muted">
-          강한 훅 분석과 72개 Remotion 디자인 템플릿으로 붙여넣기 한 번에 MP4 초안까지.
-        </p>
+        <span className="text-[12px] text-subtle">paste → video</span>
       </header>
+
+      <h1 className="mb-6 text-[34px] font-bold leading-[1.08] tracking-[-0.02em] text-fg">
+        붙여넣으면, 영상이 됩니다.
+      </h1>
 
       {/* Paste box */}
       <section className="rounded-3xl border border-line bg-surface p-5">
-        <label className="mb-2 block text-sm font-semibold text-muted">
-          Claude 답변 전체를 붙여넣으세요 (구분자 자동 추출)
-        </label>
         <textarea
           value={input}
           onChange={(e) => setInput(e.target.value)}
           spellCheck={false}
-          className="scrollbar-thin h-56 w-full resize-y rounded-2xl border border-line2 bg-inset p-4 font-mono text-xs leading-relaxed text-fg outline-none focus:border-brand"
+          placeholder="여기에 VIDEO_SPEC_JSON을 붙여넣으세요. (스킬이 만든 ---BEGIN_VIDEO_SPEC_JSON--- 블록 전체를 그대로 붙여도 됩니다)"
+          className="scrollbar-thin h-52 w-full resize-y rounded-2xl border border-line2 bg-inset p-4 font-mono text-xs leading-relaxed text-fg outline-none transition focus:border-accent placeholder:text-faint"
         />
-        <div className="mt-3 flex flex-wrap gap-3">
+        <div className="mt-3 flex flex-wrap gap-2">
           <button
             onClick={() => runAnalyze(input)}
-            disabled={analyzing}
-            className="rounded-xl bg-line2 px-5 py-2.5 text-sm font-bold text-white transition hover:bg-line3 disabled:opacity-50"
+            disabled={analyzing || !input.trim()}
+            className="rounded-xl bg-accent px-5 py-2.5 text-sm font-semibold text-canvas transition hover:brightness-105 disabled:opacity-30"
           >
-            {analyzing ? "추출 중..." : "JSON 추출"}
-          </button>
-          <button
-            onClick={startRender}
-            disabled={!success || rendering}
-            className="rounded-xl bg-brand px-5 py-2.5 text-sm font-bold text-white transition hover:brightness-110 disabled:opacity-40"
-          >
-            {rendering ? "렌더링 중..." : "영상 생성"}
-          </button>
-          <button
-            onClick={() => setInput(SAMPLE_INPUT)}
-            className="rounded-xl border border-line2 px-4 py-2.5 text-sm text-muted hover:border-brand"
-          >
-            샘플 불러오기
+            {analyzing ? "불러오는 중..." : "불러오기"}
           </button>
         </div>
       </section>
@@ -263,11 +240,11 @@ export default function Home() {
             <div className="lg:sticky lg:top-4">
               <section className="rounded-3xl border border-line bg-surface p-5">
                 <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-                  <h2 className="text-base font-bold text-white">미리보기</h2>
+                  <h2 className="text-base font-bold text-fg">미리보기</h2>
                   <button
                     onClick={startRender}
                     disabled={rendering}
-                    className="rounded-xl bg-brand px-5 py-2.5 text-sm font-bold text-white shadow-glow transition hover:brightness-110 disabled:opacity-40"
+                    className="rounded-xl bg-brand px-5 py-2.5 text-sm font-bold text-fg shadow-glow transition hover:brightness-110 disabled:opacity-40"
                   >
                     {rendering ? "렌더링 중..." : "MP4 생성"}
                   </button>
@@ -315,9 +292,8 @@ export default function Home() {
 
       {docView && <DocModal doc={docView} onClose={() => setDocView(null)} />}
 
-      <footer className="mt-12 border-t border-line pt-5 text-xs text-faint">
-        디자인 규칙은 <code className="text-brand-fg">remotion-dev/skills</code> 의 공식 markdown을 기반으로 적용됩니다.
-        CSS transition/animation 없이 Remotion으로 deterministic하게 렌더링합니다.
+      <footer className="mt-16 border-t border-line pt-5 text-[11px] text-faint">
+        Remotion · 붙여넣기로 만드는 영상 초안
       </footer>
     </main>
   );
@@ -365,7 +341,7 @@ function AnalysisPanel({
 }) {
   return (
     <section className="mt-6 rounded-3xl border border-line bg-surface p-5">
-      <h2 className="mb-3 text-base font-bold text-white">분석</h2>
+      <h2 className="mb-3 text-base font-bold text-fg">분석</h2>
       <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm">
         <Meta label="제목" value={spec.title} />
         <Meta label="길이" value={`${spec.duration_seconds}초`} />
@@ -409,7 +385,7 @@ function SpecEditor({
   return (
     <section className="rounded-3xl border border-line bg-surface p-5">
       <div className="mb-1 flex items-center justify-between gap-3">
-        <h2 className="text-base font-bold text-white">내용 편집</h2>
+        <h2 className="text-base font-bold text-fg">내용 편집</h2>
         <button
           onClick={() => setOpen((v) => !v)}
           className="rounded-lg border border-line2 px-3 py-1 text-xs text-muted hover:border-brand"
@@ -606,7 +582,7 @@ function ThemeCard({
         <ThemeSwatches palette={rec.palette} />
       </div>
       <div className="flex items-center justify-between">
-        <h3 className="font-bold text-white">{rec.name}</h3>
+        <h3 className="font-bold text-fg">{rec.name}</h3>
         <span className="rounded-full border border-line2 px-1.5 py-0.5 text-[9px] uppercase text-subtle">
           {rec.palette.isLight ? "light" : "dark"} · {rec.palette.fontId}
         </span>
@@ -620,7 +596,7 @@ function ThemeCard({
               key={id}
               onClick={() => onViewDoc(id)}
               title="원본 Remotion markdown 보기"
-              className="rounded border border-line2 px-1.5 py-0.5 text-[10px] text-muted hover:border-brand hover:text-white"
+              className="rounded border border-line2 px-1.5 py-0.5 text-[10px] text-muted hover:border-brand hover:text-fg"
             >
               {id}
             </button>
@@ -630,7 +606,7 @@ function ThemeCard({
       <button
         onClick={() => onSelect(rec.id)}
         className={`mt-3 rounded-lg px-3 py-1.5 text-xs font-bold transition ${
-          active ? "bg-brand text-white" : "bg-line2 text-fg hover:bg-line3"
+          active ? "bg-brand text-fg" : "bg-line2 text-fg hover:bg-line3"
         }`}
       >
         {active ? "선택됨 ✓" : "이 테마 사용"}
@@ -681,7 +657,7 @@ function ThemePanel({
   return (
     <section className="mt-6 rounded-3xl border border-line bg-surface p-5">
       <div className="mb-1 flex items-center justify-between gap-3">
-        <h2 className="text-base font-bold text-white">디자인 템플릿</h2>
+        <h2 className="text-base font-bold text-fg">디자인 템플릿</h2>
         <button
           onClick={onOpenGallery}
           className="rounded-lg border border-line2 px-3 py-1.5 text-xs font-semibold text-fg2 transition hover:border-brand"
@@ -743,7 +719,7 @@ function ThemeGalleryModal({
       >
         <div className="flex items-center justify-between gap-3 border-b border-line p-4">
           <div>
-            <h3 className="font-bold text-white">디자인 템플릿 — 전체 {data.allThemes.length}개</h3>
+            <h3 className="font-bold text-fg">디자인 템플릿 — 전체 {data.allThemes.length}개</h3>
             <p className="text-[11px] text-subtle">클릭하면 적용되고 닫힙니다 · 미리보기에 반영됩니다</p>
           </div>
           <div className="flex items-center gap-2">
@@ -799,7 +775,7 @@ function RenderPanel({ job, error }: { job: JobState | null; error: string | nul
   const progress = job ? Math.round(job.progress * 100) : 0;
   return (
     <section className="mt-6 rounded-3xl border border-line bg-surface p-5">
-      <h2 className="mb-3 text-base font-bold text-white">렌더링</h2>
+      <h2 className="mb-3 text-base font-bold text-fg">렌더링</h2>
 
       {error && (
         <pre className="mb-3 whitespace-pre-wrap rounded-lg bg-red-950/30 p-3 text-xs text-red-200">
@@ -811,7 +787,7 @@ function RenderPanel({ job, error }: { job: JobState | null; error: string | nul
         <>
           <div className="mb-1 flex items-center justify-between text-xs text-muted">
             <span>
-              상태: <b className="text-white">{statusLabel(job.status)}</b>
+              상태: <b className="text-fg">{statusLabel(job.status)}</b>
             </span>
             <span>{progress}%</span>
           </div>
@@ -847,7 +823,7 @@ function RenderPanel({ job, error }: { job: JobState | null; error: string | nul
                 <a
                   href={job.videoUrl}
                   download={`paste-video-${job.jobId.slice(0, 8)}.mp4`}
-                  className="inline-block rounded-xl bg-brand px-5 py-2.5 text-sm font-bold text-white hover:brightness-110"
+                  className="inline-block rounded-xl bg-brand px-5 py-2.5 text-sm font-bold text-fg hover:brightness-110"
                 >
                   MP4 다운로드
                 </a>
@@ -885,7 +861,7 @@ function DocModal({ doc, onClose }: { doc: NonNullable<DocView>; onClose: () => 
       >
         <div className="flex items-center justify-between border-b border-line p-4">
           <div>
-            <h3 className="font-bold text-white">{doc.title}</h3>
+            <h3 className="font-bold text-fg">{doc.title}</h3>
             <p className="text-[11px] text-subtle">{doc.path}</p>
           </div>
           <button onClick={onClose} className="rounded-lg px-3 py-1 text-sm text-muted hover:bg-line2">
