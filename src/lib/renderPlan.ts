@@ -149,14 +149,12 @@ export function buildRenderPlan(
     Math.ceil(spec.duration_seconds * fps),
   );
 
-  // Honor the spec's style colors when they are real hex values; otherwise keep
-  // the rule pack defaults.
-  const baseAccent = asColor(spec.style?.accent_color, rulePack.visualDefaults.accent);
-  const visualDefaults = {
-    ...rulePack.visualDefaults,
-    background: asColor(spec.style?.background, rulePack.visualDefaults.background),
-    accent: baseAccent,
-  };
+  // The selected design template is the palette authority — its colors define
+  // the look so that picking a different template visibly changes the design.
+  // (The spec's style.accent_color/background are treated as hints only.)
+  // Per-scene mood (threat/resolution) still overrides the accent below.
+  const baseAccent = rulePack.visualDefaults.accent;
+  const visualDefaults = { ...rulePack.visualDefaults };
 
   const moodAccent: Record<SceneMood, string> = {
     neutral: baseAccent,

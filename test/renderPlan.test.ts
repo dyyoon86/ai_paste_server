@@ -57,7 +57,7 @@ describe("style color theming", () => {
     expect(detectSceneMood("수백만 건", "카운터 증가")).toBe("neutral");
   });
 
-  it("applies spec.style colors and per-scene threat/resolution accents", () => {
+  it("uses the template palette (not spec.style) and per-scene threat/resolution accents", () => {
     const spec: VideoSpec = {
       schema: "remotion.one_click_video.v1",
       title: "FDS",
@@ -77,9 +77,12 @@ describe("style color theming", () => {
       assets: [],
       render_notes: [],
     } as VideoSpec;
-    const plan = buildRenderPlan(spec, getRulePack("hook-first-short")!);
-    expect(plan.background).toBe("#0D0D0D");
-    expect(plan.visualDefaults.accent).toBe("#FF3B30");
+    const pack = getRulePack("hook-first-short")!;
+    const plan = buildRenderPlan(spec, pack);
+    // Template palette wins over spec.style (#0D0D0D/#FF3B30 are ignored).
+    expect(plan.background).toBe(pack.visualDefaults.background);
+    expect(plan.visualDefaults.accent).toBe(pack.visualDefaults.accent);
+    // Per-scene mood still overrides the accent for threat/resolution scenes.
     expect(plan.scenes[0].mood).toBe("threat");
     expect(plan.scenes[0].accent).toBe(THREAT_RED);
     expect(plan.scenes[1].mood).toBe("resolution");

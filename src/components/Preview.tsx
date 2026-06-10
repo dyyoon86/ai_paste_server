@@ -66,7 +66,7 @@ export default function Preview({
             height: dispH,
             borderRadius: 14,
             overflow: "hidden",
-            border: "1px solid #2a2140",
+            border: "1px solid #24242F",
           }}
           controls
           loop
@@ -74,17 +74,17 @@ export default function Preview({
           spaceKeyToPlayOrPause
           acknowledgeRemotionLicense
         />
-        <p className="mt-2 text-center text-[11px] text-[#6f6489]">
+        <p className="mt-2 text-center text-[11px] text-faint">
           미리보기 · {Math.round(plan.durationInFrames / plan.fps)}초 · {plan.fps}fps · {plan.width}×{plan.height}
         </p>
       </div>
 
       {/* Scene timeline */}
       <div className="flex-1">
-        <p className="mb-2 text-xs font-semibold text-[#b6a6d6]">
+        <p className="mb-2 text-xs font-semibold text-muted">
           타임라인 ({plan.scenes.length}개 장면 · 클릭하면 이동)
         </p>
-        <div className="flex h-9 w-full overflow-hidden rounded-lg border border-[#2a2140]">
+        <div className="flex h-9 w-full overflow-hidden rounded-lg border border-line2">
           {plan.scenes.map((s) => {
             const active = frame >= s.startFrame && frame < s.endFrame;
             const pct = (s.durationInFrames / plan.durationInFrames) * 100;
@@ -93,8 +93,8 @@ export default function Preview({
                 key={s.id}
                 onClick={() => seek(s.startFrame)}
                 title={`Scene ${s.id}: ${s.screenText}`}
-                style={{ width: `${pct}%`, background: active ? s.accent : "#171026" }}
-                className="flex items-center justify-center border-r border-[#0c0817] text-[10px] font-bold text-white transition-colors last:border-r-0 hover:brightness-125"
+                style={{ width: `${pct}%`, background: active ? s.accent : "#1B1B24" }}
+                className="flex items-center justify-center border-r border-canvas text-[10px] font-bold text-white transition-colors last:border-r-0 hover:brightness-125"
               >
                 {s.id}
               </button>
@@ -109,7 +109,7 @@ export default function Preview({
                 key={s.id}
                 onClick={() => seek(s.startFrame)}
                 className={`flex w-full items-center gap-3 rounded-lg border px-3 py-2 text-left transition ${
-                  active ? "border-brand bg-brand/10" : "border-[#241c38] bg-[#0c0817] hover:border-[#3a2e55]"
+                  active ? "border-brand bg-brand/10" : "border-line bg-inset hover:border-line3"
                 }`}
               >
                 <span
@@ -118,8 +118,8 @@ export default function Preview({
                 >
                   {s.id}
                 </span>
-                <span className="flex-1 truncate text-sm text-[#e6ddf6]">{s.screenText}</span>
-                <span className="shrink-0 text-[11px] text-[#7d7298]">
+                <span className="flex-1 truncate text-sm text-fg">{s.screenText}</span>
+                <span className="shrink-0 text-[11px] text-subtle">
                   {(s.startFrame / plan.fps).toFixed(1)}–{(s.endFrame / plan.fps).toFixed(1)}s
                 </span>
               </button>
