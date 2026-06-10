@@ -1,19 +1,51 @@
 import { extractVideoSpecJson, ExtractError, type ExtractStrategy } from "./specParser";
 import { validateVideoSpec, type ValidationIssue, type VideoSpec } from "./videoSpecSchema";
 import { scoreHook, suggestHooks, type HookScoreResult } from "./hookScore";
-import { recommendRulePacks } from "./rulePacks";
+import { recommendThemes, type DesignTheme } from "./themes";
 
 /**
  * End-to-end analysis used by POST /api/analyze and reused on the client view.
  * Pure (no filesystem) so it is easy to test.
  */
 
+export interface ThemePalettePreview {
+  background: string;
+  text: string;
+  accent: string;
+  accent2: string;
+  isLight: boolean;
+  fontId: string;
+}
+
 export interface RecommendationView {
   id: string;
   name: string;
+  vibe: string;
   reason: string;
   description: string;
+  bestFor: string[];
   usedSkillDocIds: string[];
+  palette: ThemePalettePreview;
+}
+
+function toView(t: DesignTheme, reason: string): RecommendationView {
+  return {
+    id: t.id,
+    name: t.name,
+    vibe: t.vibe,
+    reason,
+    description: t.description,
+    bestFor: t.bestFor,
+    usedSkillDocIds: [...t.requiredSkillDocIds, ...t.optionalSkillDocIds],
+    palette: {
+      background: t.visualDefaults.background,
+      text: t.visualDefaults.text,
+      accent: t.visualDefaults.accent,
+      accent2: t.visualDefaults.accent2,
+      isLight: t.layout.isLight,
+      fontId: t.typography.fontId,
+    },
+  };
 }
 
 export interface AnalyzeSuccess {
@@ -24,6 +56,8 @@ export interface AnalyzeSuccess {
   hook: HookScoreResult;
   hookSuggestions: string[];
   recommendations: RecommendationView[];
+  /** All themes (for the full picker), spec-adjusted, in recommendation order. */
+  allThemes: RecommendationView[];
 }
 
 export interface AnalyzeFailure {
@@ -75,18 +109,10 @@ export function analyzeInput(rawInput: string): AnalyzeResult {
   const spec = validation.spec;
   const hook = scoreHook(spec);
   const hookSuggestions = suggestHooks(spec);
-  const recs = recommendRulePacks(spec, hook.score);
+  const recs = recommendThemes(spec, hook.score);
 
-  const recommendations: RecommendationView[] = recs.slice(0, 3).map((r) => ({
-    id: r.pack.id,
-    name: r.pack.name,
-    reason: r.reason,
-    description: r.pack.description,
-    usedSkillDocIds: [
-      ...r.pack.requiredSkillDocIds,
-      ...r.pack.optionalSkillDocIds,
-    ],
-  }));
+  const allThemes: RecommendationView[] = recs.map((r) => toView(r.theme, r.reason));
+  const recommendations = allThemes.slice(0, 3);
 
   return {
     ok: true,
@@ -96,5 +122,6 @@ export function analyzeInput(rawInput: string): AnalyzeResult {
     hook,
     hookSuggestions,
     recommendations,
+    allThemes,
   };
 }

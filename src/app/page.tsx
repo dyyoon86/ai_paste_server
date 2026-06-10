@@ -11,7 +11,8 @@ export default function Home() {
   const [input, setInput] = useState(SAMPLE_INPUT);
   const [analysis, setAnalysis] = useState<AnalyzeResult | null>(null);
   const [analyzing, setAnalyzing] = useState(false);
-  const [selectedPack, setSelectedPack] = useState<string | null>(null);
+  const [selectedTheme, setSelectedTheme] = useState<string | null>(null);
+  const [showAllThemes, setShowAllThemes] = useState(false);
   const [job, setJob] = useState<JobState | null>(null);
   const [rendering, setRendering] = useState(false);
   const [renderError, setRenderError] = useState<string | null>(null);
@@ -32,7 +33,7 @@ export default function Home() {
       const data: AnalyzeResult = await res.json();
       setAnalysis(data);
       if (data.ok) {
-        setSelectedPack(data.recommendations[0]?.id ?? null);
+        setSelectedTheme(data.recommendations[0]?.id ?? null);
       }
     } catch (err) {
       setAnalysis({
@@ -73,7 +74,7 @@ export default function Home() {
   }, []);
 
   const startRender = useCallback(async () => {
-    if (!success || !selectedPack) return;
+    if (!success || !selectedTheme) return;
     setRendering(true);
     setRenderError(null);
     setJob(null);
@@ -84,7 +85,7 @@ export default function Home() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           spec: success.spec,
-          rulePackId: selectedPack,
+          themeId: selectedTheme,
           rawInput: input,
         }),
       });
@@ -117,7 +118,7 @@ export default function Home() {
       setRenderError(`렌더링 요청 실패: ${err instanceof Error ? err.message : String(err)}`);
       setRendering(false);
     }
-  }, [success, selectedPack, input, stopPolling]);
+  }, [success, selectedTheme, input, stopPolling]);
 
   useEffect(() => () => stopPolling(), [stopPolling]);
 
@@ -197,11 +198,13 @@ export default function Home() {
       {success && (
         <>
           <AnalysisPanel data={success} onApplyHook={applyHook} />
-          <RulePackPanel
+          <ThemePanel
             data={success}
-            selected={selectedPack}
-            onSelect={setSelectedPack}
+            selected={selectedTheme}
+            onSelect={setSelectedTheme}
             onViewDoc={openDoc}
+            showAll={showAllThemes}
+            onToggleAll={() => setShowAllThemes((v) => !v)}
           />
         </>
       )}
@@ -325,62 +328,136 @@ function Row({ label, value }: { label: string; value: string }) {
   );
 }
 
-function RulePackPanel({
+type Rec = AnalyzeSuccess["recommendations"][number];
+
+function ThemeSwatches({ palette }: { palette: Rec["palette"] }) {
+  const swatches = [palette.background, palette.accent, palette.accent2, palette.text];
+  return (
+    <div className="flex overflow-hidden rounded-lg border border-black/30">
+      {swatches.map((c, i) => (
+        <div key={i} style={{ background: c }} className="h-7 flex-1" />
+      ))}
+    </div>
+  );
+}
+
+function ThemeCard({
+  rec,
+  active,
+  onSelect,
+  onViewDoc,
+  compact,
+}: {
+  rec: Rec;
+  active: boolean;
+  onSelect: (id: string) => void;
+  onViewDoc: (id: string) => void;
+  compact?: boolean;
+}) {
+  return (
+    <div
+      className={`flex flex-col rounded-2xl border p-4 transition ${
+        active ? "border-brand bg-brand/10" : "border-[#2a2140] bg-[#0c0817]"
+      }`}
+    >
+      <div className="mb-2">
+        <ThemeSwatches palette={rec.palette} />
+      </div>
+      <div className="flex items-center justify-between">
+        <h3 className="font-bold text-white">{rec.name}</h3>
+        <span className="rounded-full border border-[#332954] px-1.5 py-0.5 text-[9px] uppercase text-[#8a7fae]">
+          {rec.palette.isLight ? "light" : "dark"} · {rec.palette.fontId}
+        </span>
+      </div>
+      <p className="mt-1 text-xs text-[#c3b6e0]">{rec.vibe}</p>
+      <p className="mt-1 text-[11px] text-[#7d7298]">{rec.reason}</p>
+      {!compact && (
+        <div className="mt-2 flex flex-wrap gap-1">
+          {rec.usedSkillDocIds.slice(0, 5).map((id) => (
+            <button
+              key={id}
+              onClick={() => onViewDoc(id)}
+              title="원본 Remotion markdown 보기"
+              className="rounded border border-[#332954] px-1.5 py-0.5 text-[10px] text-[#b6a6d6] hover:border-brand hover:text-white"
+            >
+              {id}
+            </button>
+          ))}
+        </div>
+      )}
+      <button
+        onClick={() => onSelect(rec.id)}
+        className={`mt-3 rounded-lg px-3 py-1.5 text-xs font-bold transition ${
+          active ? "bg-brand text-white" : "bg-[#2a2140] text-[#d8cef0] hover:bg-[#372a55]"
+        }`}
+      >
+        {active ? "선택됨 ✓" : "이 테마 사용"}
+      </button>
+    </div>
+  );
+}
+
+function ThemePanel({
   data,
   selected,
   onSelect,
   onViewDoc,
+  showAll,
+  onToggleAll,
 }: {
   data: AnalyzeSuccess;
   selected: string | null;
   onSelect: (id: string) => void;
   onViewDoc: (id: string) => void;
+  showAll: boolean;
+  onToggleAll: () => void;
 }) {
+  const recIds = new Set(data.recommendations.map((r) => r.id));
+  const others = data.allThemes.filter((t) => !recIds.has(t.id));
   return (
     <section className="mt-6 rounded-3xl border border-[#241c38] bg-[#120d1f] p-5">
-      <h2 className="mb-1 text-base font-bold text-white">디자인 / 룰</h2>
+      <div className="mb-1 flex items-center justify-between">
+        <h2 className="text-base font-bold text-white">디자인 테마</h2>
+        <button
+          onClick={onToggleAll}
+          className="rounded-lg border border-[#2a2140] px-3 py-1 text-xs text-[#b6a6d6] hover:border-brand"
+        >
+          {showAll ? "추천만 보기" : `전체 ${data.allThemes.length}개 테마 보기`}
+        </button>
+      </div>
       <p className="mb-4 text-xs text-[#7d7298]">
-        설치된 Remotion skills markdown 기반으로 자동 추천된 rule pack입니다. 직접 선택할 수도 있습니다.
+        주제에 맞춰 추천된 테마입니다. 각 테마는 색·폰트·레이아웃·모션이 다릅니다. 직접 골라도 됩니다.
       </p>
       <div className="grid gap-3 md:grid-cols-3">
-        {data.recommendations.map((rec) => {
-          const active = selected === rec.id;
-          return (
-            <div
-              key={rec.id}
-              className={`flex flex-col rounded-2xl border p-4 transition ${
-                active ? "border-brand bg-brand/10" : "border-[#2a2140] bg-[#0c0817]"
-              }`}
-            >
-              <div className="flex items-center justify-between">
-                <h3 className="font-bold text-white">{rec.name}</h3>
-                {active && <span className="text-xs font-bold text-brand-fg">선택됨</span>}
-              </div>
-              <p className="mt-1 text-xs text-[#9a8fb5]">{rec.reason}</p>
-              <div className="mt-3 flex flex-wrap gap-1">
-                {rec.usedSkillDocIds.map((id) => (
-                  <button
-                    key={id}
-                    onClick={() => onViewDoc(id)}
-                    title="원본 markdown 보기"
-                    className="rounded border border-[#332954] px-1.5 py-0.5 text-[10px] text-[#b6a6d6] hover:border-brand hover:text-white"
-                  >
-                    {id}
-                  </button>
-                ))}
-              </div>
-              <button
-                onClick={() => onSelect(rec.id)}
-                className={`mt-3 rounded-lg px-3 py-1.5 text-xs font-bold transition ${
-                  active ? "bg-brand text-white" : "bg-[#2a2140] text-[#d8cef0] hover:bg-[#372a55]"
-                }`}
-              >
-                이 rule pack 사용
-              </button>
-            </div>
-          );
-        })}
+        {data.recommendations.map((rec) => (
+          <ThemeCard
+            key={rec.id}
+            rec={rec}
+            active={selected === rec.id}
+            onSelect={onSelect}
+            onViewDoc={onViewDoc}
+          />
+        ))}
       </div>
+
+      {showAll && others.length > 0 && (
+        <>
+          <p className="mb-2 mt-5 text-xs font-semibold text-[#b6a6d6]">그 외 테마</p>
+          <div className="grid gap-3 md:grid-cols-4">
+            {others.map((rec) => (
+              <ThemeCard
+                key={rec.id}
+                rec={rec}
+                active={selected === rec.id}
+                onSelect={onSelect}
+                onViewDoc={onViewDoc}
+                compact
+              />
+            ))}
+          </div>
+        </>
+      )}
+
       <p className="mt-3 text-[11px] text-[#6f6489]">
         칩(skill doc)을 클릭하면 Remotion 원본 markdown을 그대로 볼 수 있습니다.
       </p>
@@ -423,7 +500,7 @@ function RenderPanel({ job, error }: { job: JobState | null; error: string | nul
             </pre>
           )}
           <div className="mt-2 flex flex-wrap gap-2 text-[11px] text-[#7d7298]">
-            <span>rule pack: {job.usedRulePack}</span>
+            <span>테마: {job.usedRulePack}</span>
             <span>·</span>
             <span>skills: {job.usedSkillDocIds.join(", ")}</span>
           </div>

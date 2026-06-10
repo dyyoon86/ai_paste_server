@@ -24,6 +24,70 @@ export interface ScenePlan {
   mood: SceneMood;
 }
 
+export type TextAlign = "center" | "left" | "bottom";
+export type ChipStyle = "number" | "bar" | "none";
+export type Decoration = "none" | "rules" | "underline" | "corner";
+
+/** Typography personality for a design theme. */
+export interface ThemeTypography {
+  fontId: string;
+  weightHeadline: number;
+  upper: boolean;
+  letterSpacing: number;
+  /** Multiplier on the base headline size. */
+  headlineScale: number;
+  italic: boolean;
+}
+
+/** Layout / decoration personality for a design theme. */
+export interface ThemeLayout {
+  align: TextAlign;
+  kicker: boolean;
+  accentBar: boolean;
+  chip: ChipStyle;
+  decoration: Decoration;
+  outline: boolean;
+  /** Background/text glow strength 0..1. */
+  glow: number;
+  isLight: boolean;
+}
+
+/** Compact theme embedded into the render plan so the composition can read it. */
+export interface PlanTheme {
+  id: string;
+  name: string;
+  vibe: string;
+  typography: ThemeTypography;
+  layout: ThemeLayout;
+}
+
+/** What buildRenderPlan needs: a rule pack, optionally enriched into a theme. */
+export type RenderStyle = RemotionRulePack & {
+  vibe?: string;
+  typography?: ThemeTypography;
+  layout?: ThemeLayout;
+};
+
+export const DEFAULT_TYPOGRAPHY: ThemeTypography = {
+  fontId: "sans",
+  weightHeadline: 900,
+  upper: false,
+  letterSpacing: -1,
+  headlineScale: 1,
+  italic: false,
+};
+
+export const DEFAULT_LAYOUT: ThemeLayout = {
+  align: "center",
+  kicker: false,
+  accentBar: false,
+  chip: "number",
+  decoration: "none",
+  outline: false,
+  glow: 0.6,
+  isLight: false,
+};
+
 export interface RenderPlan {
   compositionId: string;
   fps: number;
@@ -36,6 +100,7 @@ export interface RenderPlan {
   usedSkillDocIds: string[];
   animationRules: RemotionRulePack["animationRules"];
   visualDefaults: RemotionRulePack["visualDefaults"];
+  theme: PlanTheme;
   scenes: ScenePlan[];
   ctaEnabled: boolean;
   ctaText: string;
@@ -74,7 +139,7 @@ export function detectSceneMood(screenText: string, visualDirection: string): Sc
 
 export function buildRenderPlan(
   spec: VideoSpec,
-  rulePack: RemotionRulePack,
+  rulePack: RenderStyle,
 ): RenderPlan {
   const fps = rulePack.compositionDefaults.fps;
   const width = rulePack.compositionDefaults.width || spec.resolution.width;
@@ -136,6 +201,13 @@ export function buildRenderPlan(
     ],
     animationRules: rulePack.animationRules,
     visualDefaults,
+    theme: {
+      id: rulePack.id,
+      name: rulePack.name,
+      vibe: rulePack.vibe ?? rulePack.description,
+      typography: rulePack.typography ?? DEFAULT_TYPOGRAPHY,
+      layout: rulePack.layout ?? DEFAULT_LAYOUT,
+    },
     scenes,
     ctaEnabled: spec.cta.enabled,
     ctaText: spec.cta.text,

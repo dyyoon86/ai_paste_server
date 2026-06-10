@@ -2,7 +2,14 @@ import React from "react";
 import { AbsoluteFill, useCurrentFrame, useVideoConfig } from "remotion";
 import { TextBlock } from "./TextBlock";
 import { enterStyle, exitStyle } from "./animations";
-import type { ScenePlan, AnimationRules, VisualDefaults, SceneEnter, TransitionKind } from "./planTypes";
+import type {
+  ScenePlan,
+  AnimationRules,
+  VisualDefaults,
+  PlanTheme,
+  SceneEnter,
+  TransitionKind,
+} from "./planTypes";
 
 interface SceneProps {
   scene: ScenePlan;
@@ -10,6 +17,7 @@ interface SceneProps {
   total: number;
   animation: AnimationRules;
   visual: VisualDefaults;
+  theme: PlanTheme;
 }
 
 function normalizeTransition(raw: string, fallback: TransitionKind): TransitionKind {
@@ -23,11 +31,11 @@ function normalizeTransition(raw: string, fallback: TransitionKind): TransitionK
 }
 
 /**
- * A single scene. Placed inside a <Sequence> by Video.tsx, so useCurrentFrame()
- * here is already scene-local. Combines an entrance animation with an exit
- * transition derived from the scene's `transition` field.
+ * A single scene placed inside a <Sequence>, so useCurrentFrame() is scene-local.
+ * Combines an entrance animation, an exit transition, the per-scene accent
+ * (threat/resolution), and the theme's layout (chip style, alignment).
  */
-export const Scene: React.FC<SceneProps> = ({ scene, index, animation, visual }) => {
+export const Scene: React.FC<SceneProps> = ({ scene, index, total, animation, visual, theme }) => {
   const localFrame = useCurrentFrame();
   const { fps } = useVideoConfig();
 
@@ -35,12 +43,10 @@ export const Scene: React.FC<SceneProps> = ({ scene, index, animation, visual })
   const transition = normalizeTransition(scene.transition, animation.transition);
   const exit = exitStyle(localFrame, scene.durationInFrames, fps, transition);
 
-  // Scene index chip + progress markers add structure for short-form content.
-  const sceneTag = `${index + 1}`;
-
-  // Per-scene accent (threat=red, resolution=green, else base). Falls back to the
-  // pack accent for plans generated before per-scene accents existed.
   const accent = scene.accent || visual.accent;
+  const { layout } = theme;
+  const sceneTag = `0${index + 1}`.slice(-2);
+  const kickerText = `SCENE ${sceneTag} / ${`0${total}`.slice(-2)}`;
 
   return (
     <AbsoluteFill
@@ -50,41 +56,48 @@ export const Scene: React.FC<SceneProps> = ({ scene, index, animation, visual })
         clipPath: enter.clipPath ?? exit.clipPath,
       }}
     >
-      {/* Mood glow behind content, tinted by the scene accent. */}
-      <AbsoluteFill
-        style={{
-          background: `radial-gradient(50% 32% at 50% 50%, ${accent}33, transparent 70%)`,
-        }}
-      />
+      {layout.glow > 0 ? (
+        <AbsoluteFill
+          style={{
+            background: `radial-gradient(50% 32% at 50% 50%, ${accent}${alpha(layout.glow * 0.3)}, transparent 70%)`,
+          }}
+        />
+      ) : null}
 
-      <div
-        style={{
-          position: "absolute",
-          top: visual.safeArea,
-          left: visual.safeArea,
-          display: "flex",
-          alignItems: "center",
-          gap: 14,
-          color: visual.mutedText,
-          fontWeight: 700,
-        }}
-      >
+      {layout.chip !== "none" ? (
         <div
           style={{
-            width: 44,
-            height: 44,
-            borderRadius: visual.borderRadius / 2,
-            background: accent,
-            color: "#fff",
+            position: "absolute",
+            top: visual.safeArea,
+            left: visual.safeArea,
             display: "flex",
             alignItems: "center",
-            justifyContent: "center",
-            fontSize: 22,
+            gap: 14,
           }}
         >
-          {sceneTag}
+          {layout.chip === "bar" ? (
+            <div style={{ width: 56, height: 8, background: accent, borderRadius: 999 }} />
+          ) : (
+            <div
+              style={{
+                minWidth: 44,
+                height: 44,
+                padding: "0 12px",
+                borderRadius: Math.max(8, visual.borderRadius / 2),
+                background: accent,
+                color: "#fff",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontSize: 22,
+                fontWeight: 800,
+              }}
+            >
+              {sceneTag}
+            </div>
+          )}
         </div>
-      </div>
+      ) : null}
 
       <TextBlock
         screenText={scene.screenText}
@@ -94,7 +107,14 @@ export const Scene: React.FC<SceneProps> = ({ scene, index, animation, visual })
         mutedText={visual.mutedText}
         emphasis={animation.textEmphasis}
         safeArea={visual.safeArea}
+        theme={theme}
+        kickerText={kickerText}
       />
     </AbsoluteFill>
   );
 };
+
+function alpha(v: number): string {
+  const a = Math.round(Math.min(1, Math.max(0, v)) * 255);
+  return a.toString(16).padStart(2, "0");
+}

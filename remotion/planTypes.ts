@@ -42,6 +42,38 @@ export interface AnimationRules {
   easing: string;
 }
 
+export type TextAlign = "center" | "left" | "bottom";
+export type ChipStyle = "number" | "bar" | "none";
+export type Decoration = "none" | "rules" | "underline" | "corner";
+
+export interface ThemeTypography {
+  fontId: string;
+  weightHeadline: number;
+  upper: boolean;
+  letterSpacing: number;
+  headlineScale: number;
+  italic: boolean;
+}
+
+export interface ThemeLayout {
+  align: TextAlign;
+  kicker: boolean;
+  accentBar: boolean;
+  chip: ChipStyle;
+  decoration: Decoration;
+  outline: boolean;
+  glow: number;
+  isLight: boolean;
+}
+
+export interface PlanTheme {
+  id: string;
+  name: string;
+  vibe: string;
+  typography: ThemeTypography;
+  layout: ThemeLayout;
+}
+
 export interface RenderPlan {
   compositionId: string;
   fps: number;
@@ -54,6 +86,7 @@ export interface RenderPlan {
   usedSkillDocIds: string[];
   animationRules: AnimationRules;
   visualDefaults: VisualDefaults;
+  theme: PlanTheme;
   scenes: ScenePlan[];
   ctaEnabled: boolean;
   ctaText: string;

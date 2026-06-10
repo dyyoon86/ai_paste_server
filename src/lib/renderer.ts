@@ -42,6 +42,7 @@ export function buildRenderArgs(opts: {
     opts.outputPath,
     `--props=${opts.propsPath}`,
     `--concurrency=${opts.concurrency ?? 2}`,
+    "--timeout=90000",
     "--log=info",
   ];
 }

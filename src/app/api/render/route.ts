@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { randomUUID } from "node:crypto";
 import { validateVideoSpec } from "@/lib/videoSpecSchema";
-import { getRulePack, recommendRulePacks } from "@/lib/rulePacks";
+import { getTheme, themeForSpec, recommendThemes } from "@/lib/themes";
 import { scoreHook } from "@/lib/hookScore";
 import { buildRenderPlan } from "@/lib/renderPlan";
 import {
@@ -15,7 +15,7 @@ export const runtime = "nodejs";
 export const maxDuration = 60;
 
 export async function POST(req: NextRequest) {
-  let body: { spec?: unknown; rulePackId?: unknown; rawInput?: unknown };
+  let body: { spec?: unknown; themeId?: unknown; rulePackId?: unknown; rawInput?: unknown };
   try {
     body = await req.json();
   } catch {
@@ -32,21 +32,18 @@ export async function POST(req: NextRequest) {
   }
   const spec = validation.spec;
 
-  // Resolve rule pack: explicit choice, else top recommendation.
+  // Resolve theme: explicit themeId (themeId or legacy rulePackId), else top recommendation.
   const hook = scoreHook(spec);
-  let rulePack = typeof body.rulePackId === "string" ? getRulePack(body.rulePackId) : undefined;
-  if (rulePack) {
-    // Apply aspect-ratio-derived resolution & duration via the recommender so
-    // composition defaults match the spec even for an explicit pick.
-    const recs = recommendRulePacks(spec, hook.score);
-    const matched = recs.find((r) => r.pack.id === rulePack!.id);
-    if (matched) rulePack = matched.pack;
-  } else {
-    const recs = recommendRulePacks(spec, hook.score);
-    rulePack = recs[0]?.pack;
-  }
+  const wantedId =
+    (typeof body.themeId === "string" && body.themeId) ||
+    (typeof body.rulePackId === "string" && body.rulePackId) ||
+    "";
+  const base = getTheme(wantedId);
+  const rulePack = base
+    ? themeForSpec(base, spec)
+    : recommendThemes(spec, hook.score)[0]?.theme;
   if (!rulePack) {
-    return NextResponse.json({ error: "rule pack을 결정할 수 없습니다." }, { status: 400 });
+    return NextResponse.json({ error: "테마를 결정할 수 없습니다." }, { status: 400 });
   }
 
   const pre = await preflight();

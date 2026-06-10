@@ -2,7 +2,7 @@ import React from "react";
 import { AbsoluteFill, Sequence, useVideoConfig, useCurrentFrame, interpolate } from "remotion";
 import { Background } from "./Background";
 import { Scene } from "./Scene";
-import { koreanFontFamily } from "./fonts";
+import { fontFamily } from "./fonts";
 import type { RenderPlan } from "./planTypes";
 
 export type VideoProps = {
@@ -18,8 +18,8 @@ export const PasteVideo: React.FC<VideoProps> = ({ plan }) => {
   const visual = plan.visualDefaults;
 
   return (
-    <AbsoluteFill style={{ fontFamily: koreanFontFamily }}>
-      <Background visual={visual} />
+    <AbsoluteFill style={{ fontFamily: fontFamily(plan.theme.typography.fontId) }}>
+      <Background visual={visual} theme={plan.theme} />
 
       {plan.scenes.map((scene, i) => (
         <Sequence
@@ -34,6 +34,7 @@ export const PasteVideo: React.FC<VideoProps> = ({ plan }) => {
             total={plan.scenes.length}
             animation={plan.animationRules}
             visual={visual}
+            theme={plan.theme}
           />
         </Sequence>
       ))}

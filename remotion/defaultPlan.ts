@@ -30,6 +30,13 @@ export const defaultPlan: RenderPlan = {
     borderRadius: 28,
     safeArea: 96,
   },
+  theme: {
+    id: "midnight-pop",
+    name: "Midnight Pop",
+    vibe: "어두운 배경에 보라빛, 통통 튀는 기본 숏폼",
+    typography: { fontId: "sans", weightHeadline: 900, upper: false, letterSpacing: -1, headlineScale: 1, italic: false },
+    layout: { align: "center", kicker: false, accentBar: false, chip: "number", decoration: "none", outline: false, glow: 0.7, isLight: false },
+  },
   scenes: [
     {
       id: 1,
