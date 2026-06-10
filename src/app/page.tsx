@@ -1,10 +1,33 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { SAMPLE_INPUT } from "@/lib/sampleInput";
 import type { AnalyzeResult, AnalyzeSuccess } from "@/lib/analyze";
 import type { JobState } from "@/lib/jobStore";
+import type { VideoSpec, Scene } from "@/lib/videoSpecSchema";
+import { scoreHook, suggestHooks, type HookScoreResult } from "@/lib/hookScore";
+
+const TRANSITIONS = ["fade", "slide", "zoom", "wipe", "cut"] as const;
+
+const ASPECT_RES: Record<string, { width: number; height: number }> = {
+  "9:16": { width: 1080, height: 1920 },
+  "16:9": { width: 1920, height: 1080 },
+  "1:1": { width: 1080, height: 1080 },
+};
+
+/** Even, contiguous re-timing across the duration (keeps the spec server-valid). */
+function retime(scenes: Scene[], duration: number): Scene[] {
+  const n = scenes.length;
+  if (n === 0) return scenes;
+  const r = (v: number) => Math.round(v * 10) / 10;
+  return scenes.map((s, i) => ({
+    ...s,
+    id: i + 1,
+    start: r((i * duration) / n),
+    end: i === n - 1 ? duration : r(((i + 1) * duration) / n),
+  }));
+}
 
 // Remotion Player runs in the browser only.
 const Preview = dynamic(() => import("@/components/Preview"), {
@@ -24,9 +47,64 @@ export default function Home() {
   const [rendering, setRendering] = useState(false);
   const [renderError, setRenderError] = useState<string | null>(null);
   const [docView, setDocView] = useState<DocView>(null);
+  const [editSpec, setEditSpec] = useState<VideoSpec | null>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const success = analysis?.ok ? (analysis as AnalyzeSuccess) : null;
+
+  // The edited spec is the source of truth for preview/render/hook once analyzed.
+  // Hook score + suggestions recompute live, client-side (no server round-trip).
+  const liveHook: HookScoreResult | null = useMemo(
+    () => (editSpec ? scoreHook(editSpec) : null),
+    [editSpec],
+  );
+  const liveSuggestions = useMemo(
+    () => (editSpec ? suggestHooks(editSpec) : []),
+    [editSpec],
+  );
+  const resolvedRes = editSpec
+    ? ASPECT_RES[editSpec.aspect_ratio] ?? editSpec.resolution
+    : { width: 0, height: 0 };
+
+  const patchScene = useCallback((index: number, patch: Partial<Scene>) => {
+    setEditSpec((prev) => {
+      if (!prev) return prev;
+      const scenes = prev.scenes.map((s, i) => (i === index ? { ...s, ...patch } : s));
+      return { ...prev, scenes };
+    });
+  }, []);
+
+  const addScene = useCallback(() => {
+    setEditSpec((prev) => {
+      if (!prev || prev.scenes.length >= 30) return prev;
+      const next: Scene = {
+        id: prev.scenes.length + 1,
+        start: 0,
+        end: 1,
+        screen_text: "새 장면",
+        narration: "",
+        visual_direction: "",
+        transition: "fade",
+      };
+      return { ...prev, scenes: retime([...prev.scenes, next], prev.duration_seconds) };
+    });
+  }, []);
+
+  const removeScene = useCallback((index: number) => {
+    setEditSpec((prev) => {
+      if (!prev || prev.scenes.length <= 1) return prev;
+      const scenes = prev.scenes.filter((_, i) => i !== index);
+      return { ...prev, scenes: retime(scenes, prev.duration_seconds) };
+    });
+  }, []);
+
+  const setDuration = useCallback((seconds: number) => {
+    setEditSpec((prev) => {
+      if (!prev) return prev;
+      const d = Math.max(3, Math.min(180, Math.round(seconds)));
+      return { ...prev, duration_seconds: d, scenes: retime(prev.scenes, d) };
+    });
+  }, []);
 
   const runAnalyze = useCallback(async (text: string) => {
     setAnalyzing(true);
@@ -41,6 +119,7 @@ export default function Home() {
       setAnalysis(data);
       if (data.ok) {
         setSelectedTheme(data.recommendations[0]?.id ?? null);
+        setEditSpec(data.spec);
       }
     } catch (err) {
       setAnalysis({
@@ -53,24 +132,18 @@ export default function Home() {
     }
   }, []);
 
-  // Re-analyze from an in-memory spec (used by hook suggestions).
-  const reanalyzeSpec = useCallback(
-    async (specObj: unknown) => {
-      const wrapped = `---BEGIN_VIDEO_SPEC_JSON---\n${JSON.stringify(specObj, null, 2)}\n---END_VIDEO_SPEC_JSON---`;
-      setInput(wrapped);
-      await runAnalyze(wrapped);
-    },
-    [runAnalyze],
-  );
-
+  // Apply a hook suggestion to scene 1 (live; hook score recomputes from editSpec).
   const applyHook = useCallback(
     (hookText: string) => {
-      if (!success) return;
-      const next = structuredClone(success.spec);
-      if (next.scenes[0]) next.scenes[0].screen_text = hookText;
-      void reanalyzeSpec(next);
+      setEditSpec((prev) => {
+        if (!prev || !prev.scenes[0]) return prev;
+        const scenes = prev.scenes.map((s, i) =>
+          i === 0 ? { ...s, screen_text: hookText } : s,
+        );
+        return { ...prev, scenes };
+      });
     },
-    [success, reanalyzeSpec],
+    [],
   );
 
   const stopPolling = useCallback(() => {
@@ -81,7 +154,7 @@ export default function Home() {
   }, []);
 
   const startRender = useCallback(async () => {
-    if (!success || !selectedTheme) return;
+    if (!editSpec || !selectedTheme) return;
     setRendering(true);
     setRenderError(null);
     setJob(null);
@@ -91,7 +164,7 @@ export default function Home() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          spec: success.spec,
+          spec: editSpec,
           themeId: selectedTheme,
           rawInput: input,
         }),
@@ -125,7 +198,7 @@ export default function Home() {
       setRenderError(`렌더링 요청 실패: ${err instanceof Error ? err.message : String(err)}`);
       setRendering(false);
     }
-  }, [success, selectedTheme, input, stopPolling]);
+  }, [editSpec, selectedTheme, input, stopPolling]);
 
   useEffect(() => () => stopPolling(), [stopPolling]);
 
@@ -203,9 +276,24 @@ export default function Home() {
       )}
 
       {/* Analysis */}
-      {success && (
+      {success && editSpec && liveHook && (
         <>
-          <AnalysisPanel data={success} onApplyHook={applyHook} />
+          <AnalysisPanel
+            spec={editSpec}
+            hook={liveHook}
+            suggestions={liveSuggestions}
+            resolution={resolvedRes}
+            onApplyHook={applyHook}
+          />
+          <SpecEditor
+            spec={editSpec}
+            onTitle={(title) => setEditSpec((p) => (p ? { ...p, title } : p))}
+            onDuration={setDuration}
+            onCta={(cta) => setEditSpec((p) => (p ? { ...p, cta } : p))}
+            onPatchScene={patchScene}
+            onAddScene={addScene}
+            onRemoveScene={removeScene}
+          />
           <ThemePanel
             data={success}
             selected={selectedTheme}
@@ -225,7 +313,7 @@ export default function Home() {
                 {rendering ? "렌더링 중..." : "이 디자인으로 MP4 생성"}
               </button>
             </div>
-            <Preview spec={success.spec} themeId={selectedTheme} />
+            <Preview spec={editSpec} themeId={selectedTheme} />
           </section>
 
           {showAllThemes && (
@@ -291,13 +379,18 @@ function ErrorPanel({ result }: { result: Extract<AnalyzeResult, { ok: false }> 
 }
 
 function AnalysisPanel({
-  data,
+  spec,
+  hook,
+  suggestions,
+  resolution,
   onApplyHook,
 }: {
-  data: AnalyzeSuccess;
+  spec: VideoSpec;
+  hook: HookScoreResult;
+  suggestions: string[];
+  resolution: { width: number; height: number };
   onApplyHook: (text: string) => void;
 }) {
-  const { spec, hook } = data;
   const gradeColor =
     hook.score >= 75 ? "text-emerald-400" : hook.score >= 60 ? "text-amber-400" : "text-red-400";
   return (
@@ -309,13 +402,13 @@ function AnalysisPanel({
           <Row label="핵심 메시지" value={spec.core_message} />
           <Row label="영상 길이" value={`${spec.duration_seconds}초`} />
           <Row label="장면 수" value={`${spec.scenes.length}개`} />
-          <Row label="해상도" value={`${data.resolvedResolution.width}×${data.resolvedResolution.height} (${spec.aspect_ratio})`} />
+          <Row label="해상도" value={`${resolution.width}×${resolution.height} (${spec.aspect_ratio})`} />
         </dl>
       </div>
       <div>
         <div className="flex items-baseline gap-3">
           <h2 className="text-base font-bold text-white">훅 점수</h2>
-          <span className={`text-3xl font-black ${gradeColor}`}>{hook.score}</span>
+          <span className={`text-3xl font-black tabular ${gradeColor}`}>{hook.score}</span>
           <span className={`text-sm font-semibold ${gradeColor}`}>{hook.grade}</span>
         </div>
         {hook.warning && (
@@ -336,7 +429,7 @@ function AnalysisPanel({
         <div className="mt-4">
           <p className="mb-1.5 text-xs font-semibold text-muted">훅 개선안 (클릭하면 첫 장면 교체)</p>
           <div className="space-y-1.5">
-            {data.hookSuggestions.map((s, i) => (
+            {suggestions.map((s, i) => (
               <button
                 key={i}
                 onClick={() => onApplyHook(s)}
@@ -348,6 +441,139 @@ function AnalysisPanel({
           </div>
         </div>
       </div>
+    </section>
+  );
+}
+
+function SpecEditor({
+  spec,
+  onTitle,
+  onDuration,
+  onCta,
+  onPatchScene,
+  onAddScene,
+  onRemoveScene,
+}: {
+  spec: VideoSpec;
+  onTitle: (v: string) => void;
+  onDuration: (v: number) => void;
+  onCta: (v: VideoSpec["cta"]) => void;
+  onPatchScene: (index: number, patch: Partial<Scene>) => void;
+  onAddScene: () => void;
+  onRemoveScene: (index: number) => void;
+}) {
+  const [open, setOpen] = useState(true);
+  const inputCls =
+    "w-full rounded-lg border border-line2 bg-inset px-3 py-2 text-sm text-fg outline-none focus:border-brand";
+  return (
+    <section className="mt-6 rounded-3xl border border-line bg-surface p-5">
+      <div className="mb-1 flex items-center justify-between gap-3">
+        <h2 className="text-base font-bold text-white">내용 편집</h2>
+        <button
+          onClick={() => setOpen((v) => !v)}
+          className="rounded-lg border border-line2 px-3 py-1 text-xs text-muted hover:border-brand"
+        >
+          {open ? "접기" : "펼치기"}
+        </button>
+      </div>
+      <p className="mb-4 text-xs text-subtle">
+        JSON을 몰라도 됩니다. 여기서 고치면 미리보기와 훅 점수에 바로 반영됩니다.
+      </p>
+
+      {open && (
+        <div className="space-y-4">
+          {/* meta row */}
+          <div className="grid gap-3 sm:grid-cols-[1fr_120px_auto]">
+            <label className="block">
+              <span className="mb-1 block text-[11px] text-muted">제목</span>
+              <input className={inputCls} value={spec.title} onChange={(e) => onTitle(e.target.value)} />
+            </label>
+            <label className="block">
+              <span className="mb-1 block text-[11px] text-muted">길이(초)</span>
+              <input
+                type="number"
+                min={3}
+                max={180}
+                className={inputCls}
+                value={spec.duration_seconds}
+                onChange={(e) => onDuration(Number(e.target.value) || spec.duration_seconds)}
+              />
+            </label>
+            <label className="flex items-end gap-2 pb-2">
+              <input
+                type="checkbox"
+                checked={spec.cta.enabled}
+                onChange={(e) => onCta({ ...spec.cta, enabled: e.target.checked })}
+              />
+              <span className="text-xs text-muted">CTA</span>
+            </label>
+          </div>
+          {spec.cta.enabled && (
+            <input
+              className={inputCls}
+              placeholder="CTA 문구 (예: 지금 시작하세요 ✅)"
+              value={spec.cta.text}
+              onChange={(e) => onCta({ ...spec.cta, text: e.target.value })}
+            />
+          )}
+
+          {/* scenes */}
+          <div className="space-y-3">
+            {spec.scenes.map((s, i) => (
+              <div key={i} className="rounded-2xl border border-line bg-inset p-3">
+                <div className="mb-2 flex items-center justify-between">
+                  <span className="text-xs font-bold text-muted">
+                    장면 {i + 1}
+                    <span className="ml-2 font-normal text-faint tabular">
+                      {s.start}–{s.end}s
+                    </span>
+                  </span>
+                  <button
+                    onClick={() => onRemoveScene(i)}
+                    disabled={spec.scenes.length <= 1}
+                    className="rounded px-2 py-0.5 text-[11px] text-faint hover:text-red-400 disabled:opacity-30"
+                  >
+                    삭제
+                  </button>
+                </div>
+                <div className="grid gap-2 sm:grid-cols-[1fr_1fr_110px]">
+                  <input
+                    className={inputCls}
+                    placeholder="화면 문구 (짧게)"
+                    value={s.screen_text}
+                    onChange={(e) => onPatchScene(i, { screen_text: e.target.value })}
+                  />
+                  <input
+                    className={inputCls}
+                    placeholder="내레이션 (설명)"
+                    value={s.narration}
+                    onChange={(e) => onPatchScene(i, { narration: e.target.value })}
+                  />
+                  <select
+                    className={inputCls}
+                    value={TRANSITIONS.includes(s.transition as (typeof TRANSITIONS)[number]) ? s.transition : "fade"}
+                    onChange={(e) => onPatchScene(i, { transition: e.target.value })}
+                  >
+                    {TRANSITIONS.map((t) => (
+                      <option key={t} value={t}>
+                        {t}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <button
+            onClick={onAddScene}
+            disabled={spec.scenes.length >= 30}
+            className="rounded-lg border border-line2 px-4 py-2 text-xs font-semibold text-fg2 hover:border-brand disabled:opacity-40"
+          >
+            + 장면 추가 ({spec.scenes.length}/30)
+          </button>
+        </div>
+      )}
     </section>
   );
 }
