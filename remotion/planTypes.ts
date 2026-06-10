@@ -8,6 +8,8 @@ export type SceneEnter = "fade" | "slide-up" | "zoom" | "wipe" | "pop";
 export type TextEmphasis = "highlight" | "scale" | "underline" | "none";
 export type TransitionKind = "cut" | "fade" | "slide" | "wipe" | "zoom";
 
+export type SceneMood = "neutral" | "threat" | "resolution";
+
 export interface ScenePlan {
   id: number;
   index: number;
@@ -18,6 +20,8 @@ export interface ScenePlan {
   narration: string;
   visualDirection: string;
   transition: string;
+  accent: string;
+  mood: SceneMood;
 }
 
 export interface VisualDefaults {

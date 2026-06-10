@@ -41,6 +41,8 @@ export const defaultPlan: RenderPlan = {
       narration: "영상 만들 때 제일 어려운 건 편집보다 시작입니다.",
       visualDirection: "큰 흰색 타이포, 어두운 배경, 보라색 글로우",
       transition: "fade",
+      accent: "#7C3AED",
+      mood: "neutral",
     },
     {
       id: 2,
@@ -52,6 +54,8 @@ export const defaultPlan: RenderPlan = {
       narration: "Claude에 주제나 원고를 넣으면 영상 설계가 나옵니다.",
       visualDirection: "텍스트 입력 박스와 화살표",
       transition: "slide",
+      accent: "#7C3AED",
+      mood: "neutral",
     },
     {
       id: 3,
@@ -63,6 +67,8 @@ export const defaultPlan: RenderPlan = {
       narration: "서버가 Remotion으로 실제 영상 파일을 만듭니다.",
       visualDirection: "렌더링 프로그레스 바와 MP4 파일 아이콘",
       transition: "zoom",
+      accent: "#34C759",
+      mood: "resolution",
     },
   ],
   ctaEnabled: false,

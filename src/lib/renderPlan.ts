@@ -7,6 +7,8 @@ import type { RemotionRulePack } from "./rulePacks";
  * unit-testable and reproducible.
  */
 
+export type SceneMood = "neutral" | "threat" | "resolution";
+
 export interface ScenePlan {
   id: number;
   index: number;
@@ -17,6 +19,9 @@ export interface ScenePlan {
   narration: string;
   visualDirection: string;
   transition: string;
+  /** Per-scene accent color (threat=red, resolution=green, else pack accent). */
+  accent: string;
+  mood: SceneMood;
 }
 
 export interface RenderPlan {
@@ -40,8 +45,31 @@ export interface RenderPlan {
 
 export const COMPOSITION_ID = "PasteVideo";
 
+/** Default threat/resolution accents (overridable via style.accent_color). */
+export const THREAT_RED = "#FF3B30";
+export const RESOLUTION_GREEN = "#34C759";
+
 function clampFrame(frame: number, max: number): number {
   return Math.max(0, Math.min(frame, max));
+}
+
+const HEX_COLOR = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i;
+
+/** Use a spec-provided color string only if it's a real hex value. */
+export function asColor(value: string | undefined, fallback: string): string {
+  return value && HEX_COLOR.test(value.trim()) ? value.trim() : fallback;
+}
+
+const THREAT_WORDS = ["빨강", "빨간", "붉", "red", "위협", "threat", "이상", "위험", "경고", "alert", "fraud"];
+const RESOLUTION_WORDS = ["초록", "그린", "green", "완료", "성공", "안전", "resolution", "resolved", "✅", "✔"];
+
+/** Decide a scene's mood from its on-screen + direction text. Resolution wins. */
+export function detectSceneMood(screenText: string, visualDirection: string): SceneMood {
+  const hay = `${screenText} ${visualDirection}`.toLowerCase();
+  const hit = (words: string[]) => words.some((w) => hay.includes(w.toLowerCase()));
+  if (hit(RESOLUTION_WORDS)) return "resolution";
+  if (hit(THREAT_WORDS)) return "threat";
+  return "neutral";
 }
 
 export function buildRenderPlan(
@@ -56,12 +84,28 @@ export function buildRenderPlan(
     Math.ceil(spec.duration_seconds * fps),
   );
 
+  // Honor the spec's style colors when they are real hex values; otherwise keep
+  // the rule pack defaults.
+  const baseAccent = asColor(spec.style?.accent_color, rulePack.visualDefaults.accent);
+  const visualDefaults = {
+    ...rulePack.visualDefaults,
+    background: asColor(spec.style?.background, rulePack.visualDefaults.background),
+    accent: baseAccent,
+  };
+
+  const moodAccent: Record<SceneMood, string> = {
+    neutral: baseAccent,
+    threat: THREAT_RED,
+    resolution: RESOLUTION_GREEN,
+  };
+
   const scenes: ScenePlan[] = spec.scenes.map((scene: Scene, index: number) => {
     const startFrame = clampFrame(Math.round(scene.start * fps), durationInFrames);
     // The last scene extends to the composition end if its end matches duration.
     const rawEnd = Math.round(scene.end * fps);
     const endFrame = clampFrame(rawEnd, durationInFrames);
     const safeEnd = endFrame > startFrame ? endFrame : startFrame + fps;
+    const mood = detectSceneMood(scene.screen_text, scene.visual_direction);
     return {
       id: scene.id,
       index,
@@ -72,6 +116,8 @@ export function buildRenderPlan(
       narration: scene.narration,
       visualDirection: scene.visual_direction,
       transition: scene.transition || rulePack.animationRules.transition,
+      mood,
+      accent: moodAccent[mood],
     };
   });
 
@@ -81,7 +127,7 @@ export function buildRenderPlan(
     width,
     height,
     durationInFrames,
-    background: rulePack.visualDefaults.background,
+    background: visualDefaults.background,
     rulePackId: rulePack.id,
     rulePackName: rulePack.name,
     usedSkillDocIds: [
@@ -89,7 +135,7 @@ export function buildRenderPlan(
       ...rulePack.optionalSkillDocIds,
     ],
     animationRules: rulePack.animationRules,
-    visualDefaults: rulePack.visualDefaults,
+    visualDefaults,
     scenes,
     ctaEnabled: spec.cta.enabled,
     ctaText: spec.cta.text,

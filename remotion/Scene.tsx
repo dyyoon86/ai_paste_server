@@ -38,6 +38,10 @@ export const Scene: React.FC<SceneProps> = ({ scene, index, animation, visual })
   // Scene index chip + progress markers add structure for short-form content.
   const sceneTag = `${index + 1}`;
 
+  // Per-scene accent (threat=red, resolution=green, else base). Falls back to the
+  // pack accent for plans generated before per-scene accents existed.
+  const accent = scene.accent || visual.accent;
+
   return (
     <AbsoluteFill
       style={{
@@ -46,6 +50,13 @@ export const Scene: React.FC<SceneProps> = ({ scene, index, animation, visual })
         clipPath: enter.clipPath ?? exit.clipPath,
       }}
     >
+      {/* Mood glow behind content, tinted by the scene accent. */}
+      <AbsoluteFill
+        style={{
+          background: `radial-gradient(50% 32% at 50% 50%, ${accent}33, transparent 70%)`,
+        }}
+      />
+
       <div
         style={{
           position: "absolute",
@@ -63,7 +74,7 @@ export const Scene: React.FC<SceneProps> = ({ scene, index, animation, visual })
             width: 44,
             height: 44,
             borderRadius: visual.borderRadius / 2,
-            background: visual.accent,
+            background: accent,
             color: "#fff",
             display: "flex",
             alignItems: "center",
@@ -78,7 +89,7 @@ export const Scene: React.FC<SceneProps> = ({ scene, index, animation, visual })
       <TextBlock
         screenText={scene.screenText}
         narration={scene.narration}
-        accent={visual.accent}
+        accent={accent}
         text={visual.text}
         mutedText={visual.mutedText}
         emphasis={animation.textEmphasis}
