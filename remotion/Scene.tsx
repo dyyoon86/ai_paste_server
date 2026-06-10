@@ -34,7 +34,6 @@ export const Scene: React.FC<SceneProps> = ({ scene, index, total, animation, vi
   const accent = scene.accent || visual.accent;
   const { layout } = theme;
   const sceneTag = `0${index + 1}`.slice(-2);
-  const kickerText = `SCENE ${sceneTag} / ${`0${total}`.slice(-2)}`;
   const hasImage = typeof scene.image === "string" && /^(https?:|data:)/i.test(scene.image);
   const subtitleOn = layout.subtitle === true;
 
@@ -107,14 +106,13 @@ export const Scene: React.FC<SceneProps> = ({ scene, index, total, animation, vi
 
       <TextBlock
         screenText={scene.screenText}
-        narration={subtitleOn ? "" : scene.narration}
+        points={scene.points}
         accent={accent}
         text={visual.text}
         mutedText={visual.mutedText}
         emphasis={animation.textEmphasis}
         safeArea={visual.safeArea}
         theme={theme}
-        kickerText={kickerText}
         effect={scene.effect}
         icon={scene.icon}
       />

@@ -1,44 +1,43 @@
 import React from "react";
-import { useCurrentFrame, useVideoConfig } from "remotion";
+import { useCurrentFrame, useVideoConfig, interpolate, Easing } from "remotion";
 import { fontFamily } from "./fonts";
 import { textEmphasisStyle, punchStyle } from "./animations";
 import type { PlanTheme, SceneEffect } from "./planTypes";
 
 interface TextBlockProps {
   screenText: string;
-  narration?: string;
+  /** Short summary phrases shown as staggered motion typography under the headline. */
+  points: string[];
   accent: string;
   text: string;
   mutedText: string;
   emphasis: "highlight" | "scale" | "underline" | "none";
   safeArea: number;
   theme: PlanTheme;
-  kickerText: string;
   effect: SceneEffect;
   icon?: string;
 }
 
 /**
- * Main on-screen text, driven by the design theme's typography + layout.
- * Stays mobile-readable: headline scales down for longer strings.
+ * Center stack: optional icon, the big headline (screen_text), and short summary
+ * `points` that animate in one-by-one as motion typography. The full narration
+ * is NOT shown here — it is voiceover (TTS) + the bottom karaoke subtitle.
  */
 export const TextBlock: React.FC<TextBlockProps> = ({
   screenText,
-  narration,
+  points,
   accent,
   text,
   mutedText,
   emphasis,
   safeArea,
   theme,
-  kickerText,
   effect,
   icon,
 }) => {
   const frame = useCurrentFrame();
   const { fps, width } = useVideoConfig();
   const { typography: typo, layout } = theme;
-  // A director-set punch effect overrides the theme's default text emphasis.
   const emph =
     effect && effect !== "none"
       ? punchStyle(frame, fps, effect)
@@ -46,10 +45,7 @@ export const TextBlock: React.FC<TextBlockProps> = ({
 
   const len = screenText.length;
   const base = width * 0.11 * typo.headlineScale;
-  const headlineSize = Math.max(
-    width * 0.05,
-    base - Math.max(0, len - 8) * (width * 0.0035),
-  );
+  const headlineSize = Math.max(width * 0.05, base - Math.max(0, len - 8) * (width * 0.0035));
 
   const isLeft = layout.align === "left";
   const isBottom = layout.align === "bottom";
@@ -76,29 +72,15 @@ export const TextBlock: React.FC<TextBlockProps> = ({
     alignItems: isLeft || isBottom ? "flex-start" : "center",
     textAlign: isLeft || isBottom ? "left" : "center",
     fontFamily: fontFamily(typo.fontId),
-    ...(isBottom
-      ? { bottom: safeArea * 1.4 }
-      : { top: "50%", transform: "translateY(-50%)" }),
+    ...(isBottom ? { bottom: safeArea * 1.4 } : { top: "50%", transform: "translateY(-50%)" }),
   };
+
+  const cleanPoints = (points ?? []).map((p) => p.trim()).filter(Boolean).slice(0, 4);
 
   return (
     <div style={container}>
       {icon ? (
-        <div style={{ fontSize: width * 0.16, lineHeight: 1, transform: emph.transform }}>{icon}</div>
-      ) : null}
-
-      {layout.kicker && kickerText ? (
-        <div
-          style={{
-            fontSize: width * 0.026,
-            fontWeight: 700,
-            letterSpacing: 4,
-            color: accent,
-            textTransform: "uppercase",
-          }}
-        >
-          {kickerText}
-        </div>
+        <div style={{ fontSize: width * 0.15, lineHeight: 1, transform: emph.transform }}>{icon}</div>
       ) : null}
 
       {layout.accentBar ? (
@@ -144,21 +126,52 @@ export const TextBlock: React.FC<TextBlockProps> = ({
       {layout.decoration === "underline" ? (
         <div style={{ width: width * 0.22, height: 5, background: accent, borderRadius: 999 }} />
       ) : null}
-      {layout.decoration === "rules" ? (
-        <div style={{ width: "42%", height: 2, background: `${accent}99` }} />
-      ) : null}
 
-      {narration ? (
+      {/* Short summary points — staggered motion typography (not the full narration). */}
+      {cleanPoints.length > 0 ? (
         <div
           style={{
-            fontSize: width * 0.031,
-            lineHeight: 1.42,
-            fontWeight: 500,
-            color: mutedText,
-            maxWidth: isLeft || isBottom ? "94%" : "90%",
+            display: "flex",
+            flexDirection: "column",
+            gap: width * 0.018,
+            marginTop: width * 0.015,
+            alignItems: isLeft || isBottom ? "flex-start" : "center",
           }}
         >
-          {narration}
+          {cleanPoints.map((p, i) => {
+            const appear = 14 + i * 9;
+            const t = interpolate(frame, [appear, appear + 9], [0, 1], {
+              extrapolateLeft: "clamp",
+              extrapolateRight: "clamp",
+              easing: Easing.out(Easing.cubic),
+            });
+            return (
+              <div
+                key={i}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: width * 0.014,
+                  opacity: t,
+                  transform: `translateY(${(1 - t) * 18}px)`,
+                  fontSize: width * 0.046,
+                  fontWeight: 700,
+                  color: text,
+                }}
+              >
+                <span
+                  style={{
+                    width: width * 0.018,
+                    height: width * 0.018,
+                    borderRadius: 999,
+                    background: accent,
+                    flexShrink: 0,
+                  }}
+                />
+                <span>{p}</span>
+              </div>
+            );
+          })}
         </div>
       ) : null}
     </div>

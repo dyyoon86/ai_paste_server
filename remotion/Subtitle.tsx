@@ -19,7 +19,7 @@ interface SubtitleProps {
  */
 export const Subtitle: React.FC<SubtitleProps> = ({ words, narration, accent, sceneDurationInFrames }) => {
   const frame = useCurrentFrame();
-  const { fps, height } = useVideoConfig();
+  const { fps, width, height } = useVideoConfig();
   const sec = frame / fps;
 
   const items: Array<{ t: number; w: string }> =
@@ -40,7 +40,9 @@ export const Subtitle: React.FC<SubtitleProps> = ({ words, narration, accent, sc
     else break;
   }
 
-  const fontSize = Math.round(height * (58 / 1080));
+  // 58px at a 1920-wide reference → scale by WIDTH so portrait (9:16) subtitles
+  // stay readable instead of ballooning (height-scaling made them fill center).
+  const fontSize = Math.round(width * (58 / 1920));
   const bottom = Math.round(height * (96 / 1080));
 
   return (

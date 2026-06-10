@@ -38,6 +38,7 @@ export interface ScenePlan {
   effect: SceneEffect;
   image: string;
   icon: string;
+  points: string[];
   audioUrl?: string;
   subtitleWords?: Array<{ t: number; w: string }>;
 }

@@ -27,6 +27,8 @@ export const sceneSchema = z.object({
   image: z.string().optional(),
   /** Optional per-scene icon (emoji) shown as a large center graphic. */
   icon: z.string().optional(),
+  /** Short summary phrases shown as motion typography in the center (2~4, brief). */
+  points: z.array(z.string()).optional(),
 });
 
 export const assetSchema = z.object({

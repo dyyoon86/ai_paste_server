@@ -53,6 +53,7 @@ export const defaultPlan: RenderPlan = {
       effect: "none",
       image: "",
       icon: "",
+      points: [],
     },
     {
       id: 2,
@@ -69,6 +70,7 @@ export const defaultPlan: RenderPlan = {
       effect: "none",
       image: "",
       icon: "",
+      points: [],
     },
     {
       id: 3,
@@ -85,6 +87,7 @@ export const defaultPlan: RenderPlan = {
       effect: "none",
       image: "",
       icon: "",
+      points: [],
     },
   ],
   ctaEnabled: false,

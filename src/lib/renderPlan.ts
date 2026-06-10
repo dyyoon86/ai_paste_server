@@ -28,6 +28,8 @@ export interface ScenePlan {
   image: string;
   /** Optional per-scene icon (emoji) shown as a large center graphic; "" = none. */
   icon: string;
+  /** Short summary phrases shown as staggered motion typography in the center. */
+  points: string[];
   /** Optional per-scene narration audio (data: URL), injected server-side at render. */
   audioUrl?: string;
   /** Word timings for the karaoke subtitle (sec from scene start). Injected at render. */
@@ -220,6 +222,7 @@ export function buildRenderPlan(
       effect: normalizeEffect(scene.effect),
       image: scene.image ?? "",
       icon: scene.icon ?? "",
+      points: (scene.points ?? []).filter((p) => p && p.trim()),
     };
   });
 

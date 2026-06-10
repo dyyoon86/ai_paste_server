@@ -503,6 +503,19 @@ function SpecEditor({
                   />
                 </div>
                 <div className="mt-2 flex items-center gap-2">
+                  <span className="w-10 shrink-0 text-[11px] text-faint">포인트</span>
+                  <input
+                    className={inputCls}
+                    placeholder="요약 포인트, 쉼표 구분 (예: 1회용, 자동 식별, 유효기간)"
+                    value={(s.points ?? []).join(", ")}
+                    onChange={(e) =>
+                      onPatchScene(i, {
+                        points: e.target.value.split(",").map((x) => x.trim()).filter(Boolean),
+                      })
+                    }
+                  />
+                </div>
+                <div className="mt-2 flex items-center gap-2">
                   <span className="w-10 shrink-0 text-[11px] text-faint">이미지</span>
                   <input
                     className={inputCls}
