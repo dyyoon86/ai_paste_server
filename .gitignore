@@ -13,8 +13,12 @@
 # remotion render cache
 /.remotion
 
-# runtime job data (generated MP4s, projects, status)
-/data/jobs
+# runtime job data (generated MP4s, projects, status, scratch files)
+/data/*
+!/data/.gitkeep
+
+# oh-my-claudecode local state
+/.omc
 
 # misc
 .DS_Store
