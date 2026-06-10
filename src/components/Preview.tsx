@@ -16,9 +16,12 @@ import type { VideoSpec } from "@/lib/videoSpecSchema";
 export default function Preview({
   spec,
   themeId,
+  compact = false,
 }: {
   spec: VideoSpec;
   themeId: string | null;
+  /** compact: player + slim seekable timeline bar only (scene editing lives elsewhere). */
+  compact?: boolean;
 }) {
   const playerRef = useRef<PlayerRef>(null);
   const [frame, setFrame] = useState(0);
@@ -50,58 +53,71 @@ export default function Preview({
     playerRef.current?.seekTo(f);
   };
 
+  const playerEl = (
+    <Player
+      ref={playerRef}
+      component={PasteVideo}
+      inputProps={{ plan }}
+      durationInFrames={Math.max(1, plan.durationInFrames)}
+      fps={plan.fps}
+      compositionWidth={plan.width}
+      compositionHeight={plan.height}
+      style={{
+        width: dispW,
+        height: dispH,
+        borderRadius: 14,
+        overflow: "hidden",
+        border: "1px solid #24242F",
+      }}
+      controls
+      loop
+      clickToPlay
+      spaceKeyToPlayOrPause
+      acknowledgeRemotionLicense
+    />
+  );
+
+  // Slim seekable scene bar (always shown).
+  const bar = (
+    <div className="flex h-8 w-full overflow-hidden rounded-lg border border-line2" style={{ width: dispW }}>
+      {plan.scenes.map((s) => {
+        const active = frame >= s.startFrame && frame < s.endFrame;
+        const pct = (s.durationInFrames / plan.durationInFrames) * 100;
+        return (
+          <button
+            key={s.id}
+            onClick={() => seek(s.startFrame)}
+            title={`Scene ${s.id}: ${s.screenText}`}
+            style={{ width: `${pct}%`, background: active ? s.accent : "#1B1B24" }}
+            className="flex items-center justify-center border-r border-canvas text-[10px] font-bold text-white transition-colors last:border-r-0 hover:brightness-125"
+          >
+            {s.id}
+          </button>
+        );
+      })}
+    </div>
+  );
+
+  if (compact) {
+    return (
+      <div className="flex flex-col items-center gap-3">
+        {playerEl}
+        {bar}
+        <p className="text-center text-[11px] text-faint">
+          {Math.round(plan.durationInFrames / plan.fps)}초 · {plan.fps}fps · {plan.width}×{plan.height} · 막대 클릭=장면 이동
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col gap-4 md:flex-row md:items-start">
       <div className="shrink-0">
-        <Player
-          ref={playerRef}
-          component={PasteVideo}
-          inputProps={{ plan }}
-          durationInFrames={Math.max(1, plan.durationInFrames)}
-          fps={plan.fps}
-          compositionWidth={plan.width}
-          compositionHeight={plan.height}
-          style={{
-            width: dispW,
-            height: dispH,
-            borderRadius: 14,
-            overflow: "hidden",
-            border: "1px solid #24242F",
-          }}
-          controls
-          loop
-          clickToPlay
-          spaceKeyToPlayOrPause
-          acknowledgeRemotionLicense
-        />
-        <p className="mt-2 text-center text-[11px] text-faint">
-          미리보기 · {Math.round(plan.durationInFrames / plan.fps)}초 · {plan.fps}fps · {plan.width}×{plan.height}
-        </p>
+        {playerEl}
+        <div className="mt-2">{bar}</div>
       </div>
-
-      {/* Scene timeline */}
       <div className="flex-1">
-        <p className="mb-2 text-xs font-semibold text-muted">
-          타임라인 ({plan.scenes.length}개 장면 · 클릭하면 이동)
-        </p>
-        <div className="flex h-9 w-full overflow-hidden rounded-lg border border-line2">
-          {plan.scenes.map((s) => {
-            const active = frame >= s.startFrame && frame < s.endFrame;
-            const pct = (s.durationInFrames / plan.durationInFrames) * 100;
-            return (
-              <button
-                key={s.id}
-                onClick={() => seek(s.startFrame)}
-                title={`Scene ${s.id}: ${s.screenText}`}
-                style={{ width: `${pct}%`, background: active ? s.accent : "#1B1B24" }}
-                className="flex items-center justify-center border-r border-canvas text-[10px] font-bold text-white transition-colors last:border-r-0 hover:brightness-125"
-              >
-                {s.id}
-              </button>
-            );
-          })}
-        </div>
-        <div className="mt-3 space-y-1.5">
+        <div className="space-y-1.5">
           {plan.scenes.map((s) => {
             const active = frame >= s.startFrame && frame < s.endFrame;
             return (

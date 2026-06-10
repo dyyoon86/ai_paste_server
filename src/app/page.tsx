@@ -258,17 +258,8 @@ export default function Home() {
         <>
           <AnalysisPanel spec={editSpec} resolution={resolvedRes} />
 
-          {/* Edit (left) + live Preview (right, sticky) side by side */}
+          {/* live Preview (left, sticky) + scene-by-scene editor (right) */}
           <div className="mt-6 grid gap-6 lg:grid-cols-2 lg:items-start">
-            <SpecEditor
-              spec={editSpec}
-              onTitle={(title) => setEditSpec((p) => (p ? { ...p, title } : p))}
-              onDuration={setDuration}
-              onCta={(cta) => setEditSpec((p) => (p ? { ...p, cta } : p))}
-              onPatchScene={patchScene}
-              onAddScene={addScene}
-              onRemoveScene={removeScene}
-            />
             <div className="lg:sticky lg:top-4">
               <section className="rounded-3xl border border-line bg-surface p-5">
                 <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
@@ -281,9 +272,18 @@ export default function Home() {
                     {rendering ? "렌더링 중..." : "MP4 생성"}
                   </button>
                 </div>
-                <Preview spec={editSpec} themeId={selectedTheme} />
+                <Preview spec={editSpec} themeId={selectedTheme} compact />
               </section>
             </div>
+            <SpecEditor
+              spec={editSpec}
+              onTitle={(title) => setEditSpec((p) => (p ? { ...p, title } : p))}
+              onDuration={setDuration}
+              onCta={(cta) => setEditSpec((p) => (p ? { ...p, cta } : p))}
+              onPatchScene={patchScene}
+              onAddScene={addScene}
+              onRemoveScene={removeScene}
+            />
           </div>
 
           <ThemePanel
