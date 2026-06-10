@@ -26,6 +26,8 @@ export interface ScenePlan {
   effect: SceneEffect;
   /** Optional per-scene background image (http(s) or data: URL); "" = none. */
   image: string;
+  /** Optional per-scene narration audio (data: URL), injected server-side at render. */
+  audioUrl?: string;
 }
 
 export type SceneEffect = "none" | "punch-in" | "punch-out";

@@ -14,9 +14,10 @@ import {
   type JobState,
 } from "./jobStore";
 import type { RenderPlan } from "./renderPlan";
-import { COMPOSITION_ID } from "./renderPlan";
+import { COMPOSITION_ID, TRANSITION_FRAMES, normalizeTransitionKind } from "./renderPlan";
 import type { VideoSpec } from "./videoSpecSchema";
 import type { RemotionRulePack } from "./rulePacks";
+import { synthesizeScene } from "./tts";
 
 const require = createRequire(import.meta.url);
 
@@ -221,6 +222,47 @@ export const RemotionRoot: React.FC = () => (
 }
 
 /**
+ * Generate narration audio per scene (msedge-tts) and mutate the plan in place:
+ * set scene.audioUrl (base64 data URL), extend any scene shorter than its
+ * narration, and recompute frame layout + composition duration. Best-effort per
+ * scene — a scene whose TTS fails simply stays silent.
+ */
+async function injectNarrationAudio(jobId: string, plan: RenderPlan): Promise<void> {
+  const fps = plan.fps;
+  const audioDir = jobPath(jobId, "audio");
+  const padFrames = Math.round(fps * 0.4);
+
+  for (const s of plan.scenes) {
+    const text = (s.narration ?? "").trim();
+    if (!text) continue;
+    try {
+      const { dataUrl, durationSec } = await synthesizeScene(audioDir, s.id, text);
+      s.audioUrl = dataUrl;
+      const needed = Math.ceil(durationSec * fps) + padFrames;
+      if (needed > s.durationInFrames) s.durationInFrames = needed;
+    } catch {
+      /* leave this scene silent */
+    }
+  }
+
+  // Re-layout scene frames and recompute composition duration (transition overlaps).
+  let cursor = 0;
+  for (const s of plan.scenes) {
+    s.startFrame = cursor;
+    s.endFrame = cursor + s.durationInFrames;
+    cursor = s.endFrame;
+  }
+  let overlap = 0;
+  plan.scenes.forEach((s, i) => {
+    if (i > 0 && normalizeTransitionKind(s.transition) !== "cut") overlap += TRANSITION_FRAMES;
+  });
+  plan.durationInFrames = Math.max(
+    1,
+    plan.scenes.reduce((a, s) => a + s.durationInFrames, 0) - overlap,
+  );
+}
+
+/**
  * Kick off a background render. Returns immediately; progress is written to
  * status.json which the GET /api/jobs/{jobId} endpoint polls.
  */
@@ -240,9 +282,19 @@ export function startRender(state: JobState, plan: RenderPlan): void {
   const cli = resolveRemotionCli();
 
   void (async () => {
+    // Narration TTS (free, key-less) — generate per-scene audio and inject into
+    // the plan before rendering. Best-effort: any failure → silent render.
+    await patchStatus(jobId, { status: "rendering", progress: 0.04, message: "음성 생성 중..." });
+    try {
+      await injectNarrationAudio(jobId, plan);
+      await writeJson(jobId, "render-input.json", { plan });
+    } catch {
+      /* keep the no-audio render-input.json already written */
+    }
+
     await patchStatus(jobId, {
       status: "rendering",
-      progress: 0.02,
+      progress: 0.08,
       message: "Remotion 번들링 중...",
     });
 

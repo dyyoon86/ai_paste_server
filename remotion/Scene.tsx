@@ -1,5 +1,5 @@
 import React from "react";
-import { AbsoluteFill, Img, useCurrentFrame, useVideoConfig } from "remotion";
+import { AbsoluteFill, Audio, Img, useCurrentFrame, useVideoConfig } from "remotion";
 import { TextBlock } from "./TextBlock";
 import { enterStyle } from "./animations";
 import type {
@@ -44,6 +44,8 @@ export const Scene: React.FC<SceneProps> = ({ scene, index, total, animation, vi
         clipPath: enter.clipPath,
       }}
     >
+      {scene.audioUrl ? <Audio src={scene.audioUrl} /> : null}
+
       {hasImage ? (
         <>
           <AbsoluteFill>

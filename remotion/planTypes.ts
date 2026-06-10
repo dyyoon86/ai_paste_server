@@ -37,6 +37,7 @@ export interface ScenePlan {
   mood: SceneMood;
   effect: SceneEffect;
   image: string;
+  audioUrl?: string;
 }
 
 export interface VisualDefaults {
