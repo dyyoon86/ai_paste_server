@@ -1,0 +1,72 @@
+import type { RenderPlan } from "./planTypes";
+
+/**
+ * Fallback plan used by Remotion Studio and as defaultProps. The real render
+ * always overrides this via --props=<job>/render-input.json.
+ */
+export const defaultPlan: RenderPlan = {
+  compositionId: "PasteVideo",
+  fps: 30,
+  width: 1080,
+  height: 1920,
+  durationInFrames: 300,
+  background: "#0B0712",
+  rulePackId: "hook-first-short",
+  rulePackName: "Hook First Short",
+  usedSkillDocIds: ["text-animations", "timing", "transitions", "sequencing"],
+  animationRules: {
+    sceneEnter: "pop",
+    textEmphasis: "scale",
+    transition: "fade",
+    easing: "Easing.bezier(0.16, 1, 0.3, 1)",
+  },
+  visualDefaults: {
+    background: "#0B0712",
+    surface: "#171026",
+    text: "#FFFFFF",
+    mutedText: "#B6A6D6",
+    accent: "#7C3AED",
+    accent2: "#22D3EE",
+    borderRadius: 28,
+    safeArea: 96,
+  },
+  scenes: [
+    {
+      id: 1,
+      index: 0,
+      startFrame: 0,
+      endFrame: 90,
+      durationInFrames: 90,
+      screenText: "아직도 빈 화면?",
+      narration: "영상 만들 때 제일 어려운 건 편집보다 시작입니다.",
+      visualDirection: "큰 흰색 타이포, 어두운 배경, 보라색 글로우",
+      transition: "fade",
+    },
+    {
+      id: 2,
+      index: 1,
+      startFrame: 90,
+      endFrame: 210,
+      durationInFrames: 120,
+      screenText: "내용만 넣기",
+      narration: "Claude에 주제나 원고를 넣으면 영상 설계가 나옵니다.",
+      visualDirection: "텍스트 입력 박스와 화살표",
+      transition: "slide",
+    },
+    {
+      id: 3,
+      index: 2,
+      startFrame: 210,
+      endFrame: 300,
+      durationInFrames: 90,
+      screenText: "MP4 완성",
+      narration: "서버가 Remotion으로 실제 영상 파일을 만듭니다.",
+      visualDirection: "렌더링 프로그레스 바와 MP4 파일 아이콘",
+      transition: "zoom",
+    },
+  ],
+  ctaEnabled: false,
+  ctaText: "",
+  language: "ko",
+  title: "PasteMotion Demo",
+};
