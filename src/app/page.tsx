@@ -412,21 +412,33 @@ function ThemePanel({
   showAll: boolean;
   onToggleAll: () => void;
 }) {
-  const recIds = new Set(data.recommendations.map((r) => r.id));
-  const others = data.allThemes.filter((t) => !recIds.has(t.id));
+  // Group the full library by category (preserving the recommendation order
+  // within each group).
+  const groups: { label: string; items: Rec[] }[] = [];
+  const byCat = new Map<string, { label: string; items: Rec[] }>();
+  for (const t of data.allThemes) {
+    let g = byCat.get(t.category);
+    if (!g) {
+      g = { label: t.categoryLabel, items: [] };
+      byCat.set(t.category, g);
+      groups.push(g);
+    }
+    g.items.push(t);
+  }
+
   return (
     <section className="mt-6 rounded-3xl border border-[#241c38] bg-[#120d1f] p-5">
       <div className="mb-1 flex items-center justify-between">
-        <h2 className="text-base font-bold text-white">디자인 테마</h2>
+        <h2 className="text-base font-bold text-white">디자인 템플릿</h2>
         <button
           onClick={onToggleAll}
           className="rounded-lg border border-[#2a2140] px-3 py-1 text-xs text-[#b6a6d6] hover:border-brand"
         >
-          {showAll ? "추천만 보기" : `전체 ${data.allThemes.length}개 테마 보기`}
+          {showAll ? "추천만 보기" : `전체 ${data.allThemes.length}개 템플릿 보기`}
         </button>
       </div>
       <p className="mb-4 text-xs text-[#7d7298]">
-        주제에 맞춰 추천된 테마입니다. 각 테마는 색·폰트·레이아웃·모션이 다릅니다. 직접 골라도 됩니다.
+        주제에 맞춰 추천된 템플릿입니다. 각 템플릿은 색·폰트·레이아웃·모션이 다릅니다. 전체 {data.allThemes.length}개에서 직접 골라도 됩니다.
       </p>
       <div className="grid gap-3 md:grid-cols-3">
         {data.recommendations.map((rec) => (
@@ -440,22 +452,29 @@ function ThemePanel({
         ))}
       </div>
 
-      {showAll && others.length > 0 && (
-        <>
-          <p className="mb-2 mt-5 text-xs font-semibold text-[#b6a6d6]">그 외 테마</p>
-          <div className="grid gap-3 md:grid-cols-4">
-            {others.map((rec) => (
-              <ThemeCard
-                key={rec.id}
-                rec={rec}
-                active={selected === rec.id}
-                onSelect={onSelect}
-                onViewDoc={onViewDoc}
-                compact
-              />
-            ))}
-          </div>
-        </>
+      {showAll && (
+        <div className="mt-5 space-y-5">
+          {groups.map((g) => (
+            <div key={g.label}>
+              <p className="mb-2 text-xs font-semibold text-[#b6a6d6]">
+                {g.label}
+                <span className="ml-1 text-[#6f6489]">({g.items.length})</span>
+              </p>
+              <div className="grid gap-3 md:grid-cols-4">
+                {g.items.map((rec) => (
+                  <ThemeCard
+                    key={rec.id}
+                    rec={rec}
+                    active={selected === rec.id}
+                    onSelect={onSelect}
+                    onViewDoc={onViewDoc}
+                    compact
+                  />
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
       )}
 
       <p className="mt-3 text-[11px] text-[#6f6489]">

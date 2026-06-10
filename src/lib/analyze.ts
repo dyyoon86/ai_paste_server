@@ -1,7 +1,7 @@
 import { extractVideoSpecJson, ExtractError, type ExtractStrategy } from "./specParser";
 import { validateVideoSpec, type ValidationIssue, type VideoSpec } from "./videoSpecSchema";
 import { scoreHook, suggestHooks, type HookScoreResult } from "./hookScore";
-import { recommendThemes, type DesignTheme } from "./themes";
+import { recommendThemes, CATEGORY_LABELS, type DesignTheme } from "./themes";
 
 /**
  * End-to-end analysis used by POST /api/analyze and reused on the client view.
@@ -24,6 +24,8 @@ export interface RecommendationView {
   reason: string;
   description: string;
   bestFor: string[];
+  category: string;
+  categoryLabel: string;
   usedSkillDocIds: string[];
   palette: ThemePalettePreview;
 }
@@ -36,6 +38,8 @@ function toView(t: DesignTheme, reason: string): RecommendationView {
     reason,
     description: t.description,
     bestFor: t.bestFor,
+    category: t.category,
+    categoryLabel: CATEGORY_LABELS[t.category],
     usedSkillDocIds: [...t.requiredSkillDocIds, ...t.optionalSkillDocIds],
     palette: {
       background: t.visualDefaults.background,
