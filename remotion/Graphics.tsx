@@ -49,6 +49,11 @@ export const SceneGraphic: React.FC<GraphicProps> = ({ graphic, accent, text, wo
   if (type === "quote") return <Quote {...p} />;
   if (type === "badge" || type === "label") return <Badge {...p} />;
   if (type === "mismatch" || type === "conflict") return <Mismatch {...p} />;
+  if (type === "gauge" || type === "percent" || type === "donut") return <Gauge {...p} />;
+  if (type === "ranking" || type === "rank" || type === "top") return <Ranking {...p} />;
+  if (type === "timeline") return <Timeline {...p} />;
+  if (type === "progress" || type === "hbars") return <Progress {...p} />;
+  if (type === "versus" || type === "vs") return <Versus {...p} />;
   return <Checklist {...p} />;
 };
 
@@ -330,6 +335,132 @@ const Mismatch: React.FC<SubProps> = ({ items, accent, text, words }) => {
           </div>
         );
       })}
+    </div>
+  );
+};
+
+/** 게이지/도넛 — 원형 링이 value%까지 채워지고 중앙에 큰 %. items[0]. */
+const Gauge: React.FC<SubProps> = ({ items, accent, text }) => {
+  const frame = useCurrentFrame();
+  const { fps, width } = useVideoConfig();
+  const it = items[0];
+  const g = spring({ frame, fps, config: { damping: 16, mass: 0.9, stiffness: 80 } });
+  const target = Math.max(0, Math.min(100, it?.value ?? 0));
+  const cur = target * g;
+  const r = 42;
+  const circ = 2 * Math.PI * r;
+  return (
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100%", gap: width * 0.02 }}>
+      <div style={{ position: "relative", width: width * 0.5, height: width * 0.5 }}>
+        <svg width="100%" height="100%" viewBox="0 0 100 100">
+          <circle cx="50" cy="50" r={r} fill="none" stroke={`${accent}26`} strokeWidth="9" />
+          <circle cx="50" cy="50" r={r} fill="none" stroke={accent} strokeWidth="9" strokeLinecap="round" strokeDasharray={circ} strokeDashoffset={circ * (1 - cur / 100)} transform="rotate(-90 50 50)" />
+        </svg>
+        <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
+          <div style={{ fontSize: width * 0.13, fontWeight: 900, color: accent, lineHeight: 1 }}>{Math.round(cur)}%</div>
+          {it?.label ? <div style={{ fontSize: width * 0.032, color: text, marginTop: width * 0.005 }}>{it.label}</div> : null}
+        </div>
+      </div>
+      {it?.sub ? <div style={{ fontSize: width * 0.034, color: `${text}aa` }}>{it.sub}</div> : null}
+    </div>
+  );
+};
+
+/** 순위/랭킹 — 1·2·3위 번호 배지 + 라벨. 1위 강조. 음성 싱크. */
+const Ranking: React.FC<SubProps> = ({ items, accent, text, words }) => {
+  const frame = useCurrentFrame();
+  const { fps, width } = useVideoConfig();
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: width * 0.02, justifyContent: "center", height: "100%", width: width * 0.78, margin: "0 auto" }}>
+      {items.map((it, i) => {
+        const af = appearFrame(it.label, words, fps, i * 7);
+        const g = spring({ frame: frame - af, fps, config: { damping: 14, stiffness: 150 } });
+        const top = i === 0;
+        return (
+          <div key={i} style={{ display: "flex", alignItems: "center", gap: width * 0.02, opacity: g, transform: `translateX(${interpolate(g, [0, 1], [-26, 0])}px)`, padding: `${width * 0.018}px ${width * 0.024}px`, borderRadius: width * 0.02, border: `1px solid ${top ? accent : `${accent}33`}`, background: top ? `${accent}1e` : `${accent}0c` }}>
+            <div style={{ width: width * 0.07, height: width * 0.07, borderRadius: 999, background: top ? accent : `${accent}33`, color: top ? "#0A0A0A" : text, display: "flex", alignItems: "center", justifyContent: "center", fontSize: width * 0.04, fontWeight: 900, flexShrink: 0 }}>{i + 1}</div>
+            <div style={{ fontSize: width * (top ? 0.05 : 0.044), fontWeight: top ? 900 : 700, color: text, wordBreak: "keep-all", flex: 1 }}>{it.label}</div>
+            {it.sub ? <div style={{ fontSize: width * 0.032, color: accent, fontWeight: 700 }}>{it.sub}</div> : null}
+          </div>
+        );
+      })}
+    </div>
+  );
+};
+
+/** 타임라인 — 세로 선 + 점, 각 단계 라벨/부제. 음성 싱크. */
+const Timeline: React.FC<SubProps> = ({ items, accent, text, words }) => {
+  const frame = useCurrentFrame();
+  const { fps, width } = useVideoConfig();
+  return (
+    <div style={{ display: "flex", flexDirection: "column", justifyContent: "center", height: "100%", width: width * 0.74, margin: "0 auto" }}>
+      {items.map((it, i) => {
+        const af = appearFrame(it.label, words, fps, i * 7);
+        const g = spring({ frame: frame - af, fps, config: { damping: 14, stiffness: 150 } });
+        const last = i === items.length - 1;
+        return (
+          <div key={i} style={{ display: "flex", gap: width * 0.025, opacity: g, transform: `translateY(${interpolate(g, [0, 1], [14, 0])}px)` }}>
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+              <div style={{ width: width * 0.035, height: width * 0.035, borderRadius: 999, background: accent, boxShadow: `0 0 14px ${accent}`, flexShrink: 0 }} />
+              {!last ? <div style={{ width: 2, flex: 1, minHeight: width * 0.07, background: `${accent}55` }} /> : null}
+            </div>
+            <div style={{ paddingBottom: width * 0.035 }}>
+              <div style={{ fontSize: width * 0.046, fontWeight: 800, color: text, wordBreak: "keep-all" }}>{it.label}</div>
+              {it.sub ? <div style={{ fontSize: width * 0.032, color: accent, marginTop: width * 0.004 }}>{it.sub}</div> : null}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+};
+
+/** 가로 진행 막대 — label + value% 채움. 비율/퍼센트. 음성 싱크. */
+const Progress: React.FC<SubProps> = ({ items, accent, text, words }) => {
+  const frame = useCurrentFrame();
+  const { fps, width } = useVideoConfig();
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: width * 0.028, justifyContent: "center", height: "100%", width: width * 0.8, margin: "0 auto" }}>
+      {items.map((it, i) => {
+        const af = appearFrame(it.label, words, fps, i * 6);
+        const g = spring({ frame: frame - af, fps, config: { damping: 16, stiffness: 90 } });
+        const pct = Math.max(0, Math.min(100, it.value ?? 0)) * g;
+        return (
+          <div key={i} style={{ opacity: g }}>
+            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: width * 0.008 }}>
+              <span style={{ fontSize: width * 0.038, fontWeight: 700, color: text }}>{it.label}</span>
+              <span style={{ fontSize: width * 0.038, fontWeight: 900, color: accent }}>{Math.round(pct)}{it.sub ?? "%"}</span>
+            </div>
+            <div style={{ height: width * 0.045, borderRadius: 999, background: `${accent}22`, overflow: "hidden" }}>
+              <div style={{ width: `${pct}%`, height: "100%", borderRadius: 999, background: `linear-gradient(90deg, ${accent}aa, ${accent})`, boxShadow: `0 0 16px ${accent}66` }} />
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+};
+
+/** 대결 — A VS B 정면 대결. items 2개. */
+const Versus: React.FC<SubProps> = ({ items, accent, text }) => {
+  const frame = useCurrentFrame();
+  const { fps, width } = useVideoConfig();
+  const pair = items.slice(0, 2);
+  const side = (it: Items[0], i: number) => {
+    const g = spring({ frame: frame - i * 6, fps, config: { damping: 14, stiffness: 150 } });
+    return (
+      <div style={{ flex: 1, textAlign: "center", opacity: g, transform: `translateX(${interpolate(g, [0, 1], [i === 0 ? -30 : 30, 0])}px)` }}>
+        <div style={{ fontSize: width * 0.07, fontWeight: 900, color: i === 1 ? accent : text, wordBreak: "keep-all" }}>{it?.label}</div>
+        {it?.sub ? <div style={{ fontSize: width * 0.036, color: `${text}aa`, marginTop: width * 0.01 }}>{it.sub}</div> : null}
+      </div>
+    );
+  };
+  const vg = spring({ frame, fps, config: { damping: 9, mass: 0.5, stiffness: 200 } });
+  return (
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%", gap: width * 0.02 }}>
+      {side(pair[0], 0)}
+      <div style={{ fontSize: width * 0.09, fontWeight: 900, color: accent, transform: `scale(${interpolate(vg, [0, 1], [0.4, 1])})`, textShadow: `0 0 24px ${accent}88`, flexShrink: 0 }}>VS</div>
+      {side(pair[1], 1)}
     </div>
   );
 };

@@ -87,6 +87,11 @@ scene별 필드 (네가 "디렉터"로서 내용에 맞게 직접 정한다):
 - `quote` — 인용/콜아웃. items 1개, `label`=인용문, `sub`=출처. 결정적 한마디.
 - `badge` — 단일 라벨 한 개. items 1개 `label`. "CI 실패" 같은 상태 강조.
 - `mismatch` — 불일치 관계도. items를 2개씩 짝지어 `박스 ✕ 박스`(빨강 X). 충돌·어긋남.
+- `gauge` — 게이지/도넛 %. items 1개 `value`(0~100)+`label`+`sub`. 달성률·비중.
+- `ranking` — 순위 1·2·3위. `label`(+`sub`=수치). 베스트/탑N. 1위 강조.
+- `timeline` — 세로 타임라인. `label`+`sub`(시점). 역사·단계·일정.
+- `progress` — 가로 % 막대 여러 개. `label`+`value`(0~100). 비율 비교.
+- `versus` — A vs B 정면 대결. items 2개 `label`+`sub`.
 
 **음성 싱크 규칙(중요): `label`에 쓴 단어를 `narration`에서도 반드시 말해라.** 그래야 그 단어 말할 때 항목이 뜬다. (예: items label=점수/근거/액션 → narration "점수에서 근거, 액션으로 흐릅니다") 안 맞으면 순차로 뜬다(폴백).
 
