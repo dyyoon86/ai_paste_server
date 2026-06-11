@@ -81,9 +81,9 @@ describe("style color theming", () => {
     } as VideoSpec;
     const pack = getRulePack("hook-first-short")!;
     const plan = buildRenderPlan(spec, pack);
-    // Template palette wins over spec.style (#0D0D0D/#FF3B30 are ignored).
+    // 배경은 템플릿 팔레트, accent은 spec.style.accent_color(유효 hex)가 우선.
     expect(plan.background).toBe(pack.visualDefaults.background);
-    expect(plan.visualDefaults.accent).toBe(pack.visualDefaults.accent);
+    expect(plan.visualDefaults.accent).toBe("#FF3B30");
     // Per-scene mood still overrides the accent for threat/resolution scenes.
     expect(plan.scenes[0].mood).toBe("threat");
     expect(plan.scenes[0].accent).toBe(THREAT_RED);

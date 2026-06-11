@@ -46,7 +46,7 @@ aspect_ratio:  "9:16" | "16:9" | "1:1"
 resolution:    { width:int(16~4096), height:int(16~4096) }   // 9:16→1080×1920, 16:9→1920×1080, 1:1→1080×1080
 duration_seconds: 양수, 최대 180
 language:      "ko" 등
-style:         { name, background, accent_color, text_style, motion }   // 모두 문자열, 색은 #RRGGBB 권장(서버 템플릿이 최종 색을 정하므로 힌트)
+style:         { name, background, accent_color, text_style, motion }   // 모두 문자열. accent_color(#RRGGBB)는 실제 포인트색으로 적용됨(제목강조·그래프·키워드). background는 어둡게.
 summary:       문자열
 core_message:  문자열 (한 문장)
 cta:           { enabled:boolean, text:string, action:string }

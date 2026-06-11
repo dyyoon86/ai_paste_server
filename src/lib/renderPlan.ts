@@ -199,12 +199,10 @@ export function buildRenderPlan(
     Math.ceil(spec.duration_seconds * fps),
   );
 
-  // The selected design template is the palette authority — its colors define
-  // the look so that picking a different template visibly changes the design.
-  // (The spec's style.accent_color/background are treated as hints only.)
-  // Per-scene mood (threat/resolution) still overrides the accent below.
-  const baseAccent = rulePack.visualDefaults.accent;
-  const visualDefaults = { ...rulePack.visualDefaults };
+  // 포인트색은 창작자(spec.style.accent_color)가 정한다 — 유효한 hex면 테마 accent을
+  // 덮어쓴다. 배경/다크 여부 등 나머지 팔레트는 테마가 담당. (mood는 아래에서 빨강/초록 override)
+  const baseAccent = asColor(spec.style?.accent_color, rulePack.visualDefaults.accent);
+  const visualDefaults = { ...rulePack.visualDefaults, accent: baseAccent };
 
   const moodAccent: Record<SceneMood, string> = {
     neutral: baseAccent,
