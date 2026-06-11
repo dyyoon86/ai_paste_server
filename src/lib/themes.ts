@@ -349,6 +349,9 @@ export function recommendThemes(spec: VideoSpec): ThemeRecommendation[] {
     let score = 1 + (catScore[t.category] ?? 0);
     const reasons: string[] = [];
     if (catReason[t.category]) reasons.push(catReason[t.category] as string);
+    // 다크 테마 선호: 시네마틱 배경(보케/그레인/비네팅)은 다크에서만 렌더되므로
+    // 동점/동일 카테고리에선 다크가 기본 추천으로 올라오게 한다.
+    if (!t.layout.isLight) score += 0.5;
     // Curated within-category priority: earlier entries score slightly higher so
     // the canonical theme of a category surfaces first on ties.
     score += (themes.length - idx) * 0.001;
