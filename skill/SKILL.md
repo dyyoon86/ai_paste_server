@@ -97,6 +97,36 @@ scene별 필드 (네가 "디렉터"로서 내용에 맞게 직접 정한다):
 
 전체 영상에서 **2~4개 장면**은 graphic으로 채우면 풍성해진다(전부 다 graphic일 필욘 없음). 나머지는 icon+headline.
 
+### graphic 타입별 item 개수 (엄수)
+- `bars` 3~5 (각 value 0~100) · `progress` 2~4 (value 0~100) · `ranking` 3~5 · `checklist` 2~5 · `cards` 2~4 · `flow` 2~4 · `timeline` 3~5 · `mismatch` **짝수(2/4/6)** · `gauge` **1** (value 0~100) · `stat` 1~3 · `quote` **1** · `badge` **1** · `compare` **2** · `versus` **2**
+- `value`는 **숫자만**(단위·기호 금지). 단위는 `sub`에. (예: bars value 90, sub 생략 / stat value 180, sub "만원")
+
+---
+
+## ⚠ 하드 제약 & 금지 (빡센 하네스 — 어기면 결과가 망가짐)
+
+**글자 수 / 형식 (엄수)**
+- `title`: 10~20자, `*별표* 금지`, 띄어쓰기 2칸+ (2줄로 갈려야 함).
+- `screen_text`: 4~16자. `*강조*`는 **정확히 1~2군데**, 별표는 **짝이 맞아야**(`*…*`) 함. 안 닫힌 별표 금지.
+- `narration`: **완결된 1문장**, 너무 길게 쓰지 마라(한 장면 ≈2~4초 분량). `*별표* 금지`.
+- `visual_direction`: **영문 대문자 1~3단어**(24자 이내). 한글·문장 금지.
+- `icon`: 정확히 **이모지 1개**. (graphic 있으면 icon 생략 — **둘 다 넣지 마라**.)
+- `accent_color`: 반드시 `#RRGGBB` hex.
+
+**절대 금지 (자주 나오는 실패)**
+1. 한 장면에 `icon`과 `graphic`을 **둘 다** 넣기 / **둘 다 없이** 비우기 → 하나만.
+2. `screen_text` 별표가 3개↑이거나 짝이 안 맞음.
+3. `title`에 별표 쓰기 (제목은 첫 줄 자동 강조).
+4. `visual_direction`을 한글/긴 문장으로 (영문 키커 아님).
+5. `slide`/`zoom`/`wipe` 전환 남발 (기본 `cut`, 가끔 `fade`).
+6. graphic `value`에 "%"·"점"·"만원" 같은 단위/문자 넣기 (숫자만, 단위는 sub).
+7. `mismatch` items를 홀수 개로.
+8. JSON 안에 마크다운 코드펜스(```)·주석·트레일링 콤마.
+9. narration이 길어 한 장면이 6초 넘게 → 장면을 더 쪼개라.
+
+**★ 음성 싱크 검증 (graphic 장면마다 필수)**
+graphic의 **모든 `label` 핵심 단어가 그 장면 `narration`에 글자 그대로 들어있는지** 확인해라. 빠진 게 있으면 → narration을 고쳐 그 단어를 넣거나, label을 narration에 나오는 단어로 바꿔라. (그래야 음성에 맞춰 순서대로 뜬다.)
+
 ```
 render_notes:  string[]  // 2~4개
 ```
@@ -146,20 +176,27 @@ render_notes:  string[]  // 2~4개
 - **정지 금지**: 어떤 장면도 화면이 2초 이상 멈춘 듯 보이면 안 된다 — 짧게 끊거나 punch로 움직임을 준다.
 - 등장/배경 모션과 폰트·레이아웃은 서버 **템플릿**이 자동 처리하므로 신경 쓰지 않는다. 너는 **장면 문구·내레이션·무드 큐·transition·effect·페이싱**만 결정한다.
 
-## 출력 직전 셀프 체크
-- [ ] enum 값 정확(schema/format/aspect_ratio)
-- [ ] scenes 1~30개, 첫 start=0, 겹침 없음, 마지막 end = duration_seconds, 모든 end>start
-- [ ] **타이트 페이싱**: 장면당 2~4초, 2초 이상 정지돼 보이는 장면 없음
-- [ ] **연출 배정**: transition 기본 cut, 핵심 장면엔 effect=punch-in
-- [ ] **모든 scene에 `visual_direction`(영문 키커) + (`icon` 또는 `graphic`) 포함**
-- [ ] **`screen_text`에 핵심 단어 `*별표*` 강조** (1~2군데; title엔 `*별표*` 쓰지 않음)
-- [ ] **graphic 쓴 장면은 `label` 단어가 `narration`에 있음** (음성 싱크)
-- [ ] 데이터·단계·목록·수치·비교 장면은 graphic 활용(2~4개 장면)
-- [ ] duration_seconds ≤ 180, resolution이 aspect_ratio와 일치
-- [ ] 첫 장면 훅이 질문/문제/반전/결과 중 2개+ 충족, screen_text 4~16자
-- [ ] assets는 [] (또는 url이 전부 유효)
-- [ ] 구분자 사이에 JSON만, `JSON.parse` 가능, 주석/트레일링 콤마 없음
-- [ ] HyperFrames/npx/렌더 명령/파일 안내 **없음**
+## 출력 직전 검증 하네스 (3패스 — 반드시 스스로 통과시킨 뒤 출력)
+
+**출력하기 전에 아래 3패스를 머릿속으로 실행하고, 하나라도 실패하면 JSON을 고쳐라. 통과 전엔 출력 금지.**
+
+**PASS 1 — 스키마·타이밍 (어기면 서버가 거절)**
+- schema/format/aspect_ratio enum 정확, resolution이 aspect_ratio와 일치.
+- scenes 1~30개. `scenes[0].start=0`, 모든 `end>start`, 다음 `start=이전 end`(겹침/공백 0), 마지막 `end=duration_seconds`(≤180).
+- 모든 scene에 `screen_text`,`narration`,`visual_direction`,`transition`,`effect` 존재.
+- 각 scene에 `icon` 또는 `graphic` **정확히 하나**(둘 다/둘 다없음 금지).
+
+**PASS 2 — 스타일·하드제약 (어기면 결과가 못남)**
+- `title` 10~20자, 별표 없음. `screen_text` 4~16자, `*강조*` 1~2개 + 별표 짝 맞음.
+- `visual_direction` 영문 대문자 키커(1~3단어). 모든 transition 기본 `cut`(가끔 fade), slide/zoom/wipe 없음.
+- graphic: 타입별 item 개수 규칙 OK, `value`는 숫자만(단위는 sub), `mismatch` 짝수.
+- **음성 싱크: graphic 장면마다 모든 `label` 단어가 그 `narration`에 글자 그대로 있음.** (없으면 narration/label 수정)
+- graphic 장면이 전체의 30~60%. 첫 장면 훅이 질문/문제/반전/결과 중 2개+.
+
+**PASS 3 — 출력 형식**
+- 구분자 사이 **유효 JSON만**(`JSON.parse` 가능), 주석·트레일링 콤마·코드펜스 없음.
+- `assets:[]`. HyperFrames/npx/렌더 명령/파일 안내 **없음**.
+- 답은 `---BEGIN_VIDEO_SPEC_JSON---` … `---END_VIDEO_SPEC_JSON---` 블록 **하나뿐**.
 
 ## 완성 예시 (새 스타일 — 키커 + *강조* + graphic 음성싱크, 24초/8장면)
 
@@ -182,7 +219,7 @@ render_notes:  string[]  // 2~4개
     { "id": 2, "start": 3, "end": 6, "visual_direction": "THE SHIFT", "screen_text": "이제는 *방식이 다르다*", "narration": "이제는 일하는 방식이 완전히 다릅니다.", "transition": "cut", "effect": "punch-in", "icon": "🔄" },
     { "id": 3, "start": 6, "end": 11, "visual_direction": "THE RESULT", "screen_text": "단계마다 *껑충*", "narration": "기본보다 자동완성, 자동완성보다 에이전트, 에이전트보다 루프에서 생산성이 확 뜁니다.", "transition": "cut", "effect": "punch-in", "graphic": { "type": "bars", "items": [ {"label":"기본","value":20}, {"label":"자동완성","value":40}, {"label":"에이전트","value":64}, {"label":"루프","value":90} ] } },
     { "id": 4, "start": 11, "end": 15, "visual_direction": "THE FLOW", "screen_text": "이렇게 *흐른다*", "narration": "작업은 점수에서 근거, 액션으로 흐릅니다.", "transition": "cut", "effect": "none", "graphic": { "type": "flow", "items": [ {"label":"점수","sub":"3점"}, {"label":"근거","sub":"왜 3점인지"}, {"label":"액션","sub":"바로 반영"} ] } },
-    { "id": 5, "start": 15, "end": 19, "visual_direction": "RED ZONE", "screen_text": "*사람*이 결정", "narration": "스키마, 결제, 권한은 반드시 사람이 확인해야 해요.", "transition": "cut", "effect": "none", "graphic": { "type": "checklist", "items": [ {"label":"스키마 변경"}, {"label":"결제·보안"}, {"label":"권한 정책"} ] } },
+    { "id": 5, "start": 15, "end": 19, "visual_direction": "RED ZONE", "screen_text": "*사람*이 결정", "narration": "스키마 변경, 결제 보안, 권한 정책은 반드시 사람이 확인해야 해요.", "transition": "cut", "effect": "none", "graphic": { "type": "checklist", "items": [ {"label":"스키마 변경"}, {"label":"결제 보안"}, {"label":"권한 정책"} ] } },
     { "id": 6, "start": 19, "end": 21, "visual_direction": "HANDED OVER", "screen_text": "시간을 *AI에게*", "narration": "기다리던 시간을 이제 AI에게 넘깁니다.", "transition": "cut", "effect": "none", "icon": "🤖" },
     { "id": 7, "start": 21, "end": 24, "visual_direction": "START NOW", "screen_text": "오늘부터 *루프*", "narration": "오늘부터 루프로 일해보세요.", "transition": "cut", "effect": "punch-out", "icon": "🚀" }
   ],
