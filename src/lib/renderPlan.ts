@@ -156,6 +156,9 @@ export interface RenderPlan {
   ctaText: string;
   language: string;
   title: string;
+  /** 레터박스 상/하단 바 색 + 대비 텍스트색 (style.bar = "white"|"black"). */
+  barColor: string;
+  barText: string;
 }
 
 export const COMPOSITION_ID = "PasteVideo";
@@ -277,5 +280,7 @@ export function buildRenderPlan(
     ctaText: spec.cta.text,
     language: spec.language,
     title: spec.title,
+    barColor: /white|흰/i.test(spec.style?.bar ?? "") ? "#FFFFFF" : "#000000",
+    barText: /white|흰/i.test(spec.style?.bar ?? "") ? "#0A0A0A" : "#FFFFFF",
   };
 }

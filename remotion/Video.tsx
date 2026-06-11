@@ -93,12 +93,12 @@ export const PasteVideo: React.FC<VideoProps> = ({ plan }) => {
         </TransitionSeries>
       </div>
 
-      {/* 상단 검정 제목바 */}
-      <ShortsTitleBar title={plan.title} accent={visual.accent} barHeight={topH} />
+      {/* 상단 제목바 (검정/흰색) */}
+      <ShortsTitleBar title={plan.title} accent={visual.accent} barHeight={topH} barColor={plan.barColor} barText={plan.barText} />
       {/* 콘텐츠 상단 경계의 진행바 */}
       <ShortsProgressBar accent={visual.accent} topPx={midTop} />
-      {/* 하단 검정 자막바 */}
-      <ShortsBottomBar items={captionItems} barHeight={bottomH} accent={visual.accent} />
+      {/* 하단 자막바 (검정/흰색) */}
+      <ShortsBottomBar items={captionItems} barHeight={bottomH} accent={visual.accent} barColor={plan.barColor} barText={plan.barText} />
     </AbsoluteFill>
   );
 };
@@ -118,7 +118,7 @@ function splitTwoLines(s: string): [string, string] {
  * 상단 검정 제목바 — 두 줄, 첫 줄은 밝은색(accent) 강조, 타이트.
  * 쇼츠 기본: 제목은 상단바에 꽉 차게 타이트하게.
  */
-const ShortsTitleBar: React.FC<{ title: string; accent: string; barHeight: number }> = ({ title, accent, barHeight }) => {
+const ShortsTitleBar: React.FC<{ title: string; accent: string; barHeight: number; barColor: string; barText: string }> = ({ title, accent, barHeight, barColor, barText }) => {
   const frame = useCurrentFrame();
   const { fps, width } = useVideoConfig();
   if (!title) return null;
@@ -138,7 +138,7 @@ const ShortsTitleBar: React.FC<{ title: string; accent: string; barHeight: numbe
         left: 0,
         width: "100%",
         height: barHeight,
-        background: "#000",
+        background: barColor,
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
@@ -159,7 +159,7 @@ const ShortsTitleBar: React.FC<{ title: string; accent: string; barHeight: numbe
         }}
       >
         <div style={{ color: accent }}>{line1}</div>
-        {line2 ? <div style={{ color: "#fff" }}>{line2}</div> : null}
+        {line2 ? <div style={{ color: barText }}>{line2}</div> : null}
       </div>
     </div>
   );
@@ -194,7 +194,9 @@ const ShortsBottomBar: React.FC<{
   items: { scene: ScenePlan; start: number; end: number }[];
   barHeight: number;
   accent: string;
-}> = ({ items, barHeight, accent }) => {
+  barColor: string;
+  barText: string;
+}> = ({ items, barHeight, accent, barColor, barText }) => {
   const frame = useCurrentFrame();
   const { fps, width } = useVideoConfig();
 
@@ -267,7 +269,7 @@ const ShortsBottomBar: React.FC<{
         left: 0,
         width: "100%",
         height: barHeight,
-        background: "#000",
+        background: barColor,
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
@@ -291,7 +293,8 @@ const ShortsBottomBar: React.FC<{
       >
         {activeLine.toks.map((tok, j) => {
           const gi = activeLine.startIdx + j;
-          const color = gi < current ? "#FFFFFF" : gi === current ? accent : "#6E6E6E";
+          const muted = barColor === "#FFFFFF" ? "#B8B8B8" : "#6E6E6E";
+          const color = gi < current ? barText : gi === current ? accent : muted;
           return (
             <span key={j} style={{ color }}>
               {tok.w}

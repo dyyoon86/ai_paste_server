@@ -123,4 +123,6 @@ export interface RenderPlan {
   ctaText: string;
   language: string;
   title: string;
+  barColor: string;
+  barText: string;
 }

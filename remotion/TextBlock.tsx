@@ -126,9 +126,9 @@ export const TextBlock: React.FC<TextBlockProps> = ({
       <div
         style={{
           fontSize: headlineSize,
-          lineHeight: 1.12,
-          fontWeight: typo.weightHeadline,
-          letterSpacing: typo.letterSpacing,
+          lineHeight: 1.08,
+          fontWeight: 900,
+          letterSpacing: Math.min(typo.letterSpacing, -1.5),
           fontStyle: typo.italic ? "italic" : "normal",
           textTransform: typo.upper ? "uppercase" : "none",
           transform: emph.transform,

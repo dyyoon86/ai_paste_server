@@ -81,6 +81,8 @@ export const videoSpecSchema = z
       accent_color: z.string(),
       text_style: z.string(),
       motion: z.string(),
+      /** 레터박스 상/하단 바 색: "black"(기본) | "white". */
+      bar: z.string().optional(),
     }),
     summary: z.string(),
     core_message: z.string(),

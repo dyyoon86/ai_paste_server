@@ -57,6 +57,10 @@ export const Background: React.FC<BackgroundProps> = ({ visual, theme }) => {
         style={{ background: `linear-gradient(155deg, ${visual.surface} 0%, ${visual.background} 70%)`, opacity: 0.9 }}
       />
 
+      {/* 노드 네트워크 (은은한 테크 무드) */}
+      <NodeNetwork accent={ac} frame={frame} fps={fps} />
+
+
       {/* 보케 광원 (블러) */}
       <AbsoluteFill style={{ filter: "blur(90px)", opacity: 0.9 }}>
         {blobs.map((b, i) => (
@@ -111,3 +115,45 @@ function alpha(v: number): string {
   const a = Math.round(Math.min(1, Math.max(0, v)) * 255);
   return a.toString(16).padStart(2, "0");
 }
+
+const NODES: [number, number][] = [
+  [12, 14], [31, 26], [50, 11], [71, 21], [88, 32],
+  [19, 48], [44, 44], [66, 52], [86, 58],
+  [14, 76], [37, 70], [60, 80], [83, 86],
+];
+
+/** 연결된 노드망 — 위치 고정(흔들림 없음), 밝기만 천천히 펄스. */
+const NodeNetwork: React.FC<{ accent: string; frame: number; fps: number }> = ({ accent, frame, fps }) => {
+  const t = frame / fps;
+  const edges: [number, number][] = [];
+  for (let i = 0; i < NODES.length; i++) {
+    for (let j = i + 1; j < NODES.length; j++) {
+      const dx = NODES[i][0] - NODES[j][0];
+      const dy = NODES[i][1] - NODES[j][1];
+      if (Math.hypot(dx, dy) < 27) edges.push([i, j]);
+    }
+  }
+  return (
+    <AbsoluteFill style={{ opacity: 0.5 }}>
+      <svg width="100%" height="100%" viewBox="0 0 100 178" preserveAspectRatio="none" style={{ position: "absolute", inset: 0 }}>
+        {edges.map(([a, b], k) => {
+          const op = 0.05 + 0.05 * (0.5 + 0.5 * Math.sin(t * 0.5 + k));
+          return (
+            <line
+              key={k}
+              x1={NODES[a][0]} y1={(NODES[a][1] / 100) * 178}
+              x2={NODES[b][0]} y2={(NODES[b][1] / 100) * 178}
+              stroke={accent}
+              strokeWidth={0.18}
+              strokeOpacity={op}
+            />
+          );
+        })}
+        {NODES.map(([x, y], i) => {
+          const pulse = 0.4 + 0.4 * (0.5 + 0.5 * Math.sin(t * 0.7 + i * 1.3));
+          return <circle key={i} cx={x} cy={(y / 100) * 178} r={0.7} fill={accent} fillOpacity={pulse} />;
+        })}
+      </svg>
+    </AbsoluteFill>
+  );
+};

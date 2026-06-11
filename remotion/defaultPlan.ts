@@ -94,4 +94,6 @@ export const defaultPlan: RenderPlan = {
   ctaText: "",
   language: "ko",
   title: "PasteMotion Demo",
+  barColor: "#000000",
+  barText: "#FFFFFF",
 };

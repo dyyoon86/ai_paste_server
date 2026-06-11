@@ -45,6 +45,10 @@ export const SceneGraphic: React.FC<GraphicProps> = ({ graphic, accent, text, wo
   if (type === "checklist" || type === "check") return <Checklist {...p} />;
   if (type === "stat" || type === "number") return <Stat {...p} />;
   if (type === "compare") return <Compare {...p} />;
+  if (type === "cards" || type === "files") return <Cards {...p} />;
+  if (type === "quote") return <Quote {...p} />;
+  if (type === "badge" || type === "label") return <Badge {...p} />;
+  if (type === "mismatch" || type === "conflict") return <Mismatch {...p} />;
   return <Checklist {...p} />;
 };
 
@@ -201,6 +205,128 @@ const Compare: React.FC<SubProps> = ({ items, accent, text, words }) => {
           >
             <div style={{ fontSize: width * 0.06, fontWeight: 900, color: hot ? accent : text }}>{it.label}</div>
             {it.sub ? <div style={{ fontSize: width * 0.032, color: text, textAlign: "center", wordBreak: "keep-all" }}>{it.sub}</div> : null}
+          </div>
+        );
+      })}
+    </div>
+  );
+};
+
+/** 문서/파일 카드 — 아이콘 + 제목 + 부제. 음성 싱크 순차 등장. */
+const Cards: React.FC<SubProps> = ({ items, accent, text, words }) => {
+  const frame = useCurrentFrame();
+  const { fps, width } = useVideoConfig();
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: width * 0.022, justifyContent: "center", height: "100%", width: width * 0.78, margin: "0 auto" }}>
+      {items.map((it, i) => {
+        const af = appearFrame(it.label, words, fps, i * 7);
+        const g = spring({ frame: frame - af, fps, config: { damping: 14, stiffness: 150 } });
+        return (
+          <div
+            key={i}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: width * 0.022,
+              opacity: g,
+              transform: `translateX(${interpolate(g, [0, 1], [-26, 0])}px)`,
+              padding: `${width * 0.022}px ${width * 0.026}px`,
+              borderRadius: width * 0.025,
+              border: `1px solid ${accent}44`,
+              background: `${accent}10`,
+            }}
+          >
+            <div style={{ fontSize: width * 0.06, lineHeight: 1, flexShrink: 0 }}>📄</div>
+            <div style={{ display: "flex", flexDirection: "column" }}>
+              <div style={{ fontSize: width * 0.044, fontWeight: 800, color: text, wordBreak: "keep-all" }}>{it.label}</div>
+              {it.sub ? <div style={{ fontSize: width * 0.03, color: accent, marginTop: width * 0.004 }}>{it.sub}</div> : null}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+};
+
+/** 인용/콜아웃 — 큰 따옴표 박스. items[0].label = 인용문, sub = 출처. */
+const Quote: React.FC<SubProps> = ({ items, accent, text }) => {
+  const frame = useCurrentFrame();
+  const { fps, width } = useVideoConfig();
+  const it = items[0];
+  const g = spring({ frame, fps, config: { damping: 13, mass: 0.7, stiffness: 150 } });
+  return (
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%" }}>
+      <div
+        style={{
+          opacity: g,
+          transform: `scale(${interpolate(g, [0, 1], [0.8, 1])})`,
+          maxWidth: width * 0.8,
+          textAlign: "center",
+          padding: `${width * 0.05}px ${width * 0.05}px`,
+          borderRadius: width * 0.04,
+          border: `2px solid ${accent}66`,
+          background: `${accent}10`,
+          position: "relative",
+        }}
+      >
+        <div style={{ position: "absolute", top: -width * 0.04, left: width * 0.03, fontSize: width * 0.16, color: accent, lineHeight: 1, fontWeight: 900 }}>“</div>
+        <div style={{ fontSize: width * 0.066, fontWeight: 900, color: text, lineHeight: 1.25, wordBreak: "keep-all" }}>{it?.label}</div>
+        {it?.sub ? <div style={{ fontSize: width * 0.034, color: accent, marginTop: width * 0.02 }}>— {it.sub}</div> : null}
+      </div>
+    </div>
+  );
+};
+
+/** 단일 배지 — accent 외곽 알약 1개, 강한 팝. */
+const Badge: React.FC<SubProps> = ({ items, accent, text }) => {
+  const frame = useCurrentFrame();
+  const { fps, width } = useVideoConfig();
+  const it = items[0];
+  const s = spring({ frame, fps, config: { damping: 10, mass: 0.6, stiffness: 200, overshootClamping: false } });
+  return (
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%" }}>
+      <div
+        style={{
+          opacity: interpolate(s, [0, 0.5], [0, 1], { extrapolateRight: "clamp" }),
+          transform: `scale(${interpolate(s, [0, 1], [0.4, 1])})`,
+          padding: `${width * 0.03}px ${width * 0.06}px`,
+          borderRadius: 999,
+          border: `3px solid ${accent}`,
+          background: `${accent}1a`,
+          color: text,
+          fontSize: width * 0.078,
+          fontWeight: 900,
+          boxShadow: `0 0 40px ${accent}55`,
+          wordBreak: "keep-all",
+          textAlign: "center",
+        }}
+      >
+        {it?.label}
+      </div>
+    </div>
+  );
+};
+
+/** 불일치 관계도 — 박스 ─ ✗ ─ 박스 (빨강 X). items를 2개씩 짝지음. */
+const Mismatch: React.FC<SubProps> = ({ items, accent, text, words }) => {
+  const frame = useCurrentFrame();
+  const { fps, width } = useVideoConfig();
+  const pairs: [typeof items[0], typeof items[0]][] = [];
+  for (let i = 0; i + 1 < items.length; i += 2) pairs.push([items[i], items[i + 1]]);
+  const X = "#FF4D4D";
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: width * 0.04, justifyContent: "center", height: "100%" }}>
+      {pairs.map((pair, i) => {
+        const af = appearFrame(pair[0].label + pair[1].label, words, fps, i * 8);
+        const g = spring({ frame: frame - af, fps, config: { damping: 14, stiffness: 150 } });
+        const box = (label: string) => (
+          <div style={{ padding: `${width * 0.02}px ${width * 0.03}px`, borderRadius: width * 0.02, border: `2px solid ${accent}88`, background: `${accent}12`, fontSize: width * 0.042, fontWeight: 800, color: text, wordBreak: "keep-all" }}>{label}</div>
+        );
+        return (
+          <div key={i} style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: width * 0.025, opacity: g, transform: `translateY(${interpolate(g, [0, 1], [18, 0])}px)` }}>
+            {box(pair[0].label)}
+            <div style={{ fontSize: width * 0.06, color: X, fontWeight: 900, textShadow: `0 0 16px ${X}` }}>✕</div>
+            {box(pair[1].label)}
           </div>
         );
       })}

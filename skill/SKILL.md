@@ -83,6 +83,10 @@ scene별 필드 (네가 "디렉터"로서 내용에 맞게 직접 정한다):
 - `checklist` — 체크리스트. `label`만. 확인 항목·해야 할 것.
 - `stat` — 큰 숫자. `label`+`value`(카운트업)+`sub`. 통계·결과 수치.
 - `compare` — before/after 2박스. `label`+`sub`, 2개.
+- `cards` — 문서/파일 카드. `label`+`sub`. 자료·항목 나열(📄).
+- `quote` — 인용/콜아웃. items 1개, `label`=인용문, `sub`=출처. 결정적 한마디.
+- `badge` — 단일 라벨 한 개. items 1개 `label`. "CI 실패" 같은 상태 강조.
+- `mismatch` — 불일치 관계도. items를 2개씩 짝지어 `박스 ✕ 박스`(빨강 X). 충돌·어긋남.
 
 **음성 싱크 규칙(중요): `label`에 쓴 단어를 `narration`에서도 반드시 말해라.** 그래야 그 단어 말할 때 항목이 뜬다. (예: items label=점수/근거/액션 → narration "점수에서 근거, 액션으로 흐릅니다") 안 맞으면 순차로 뜬다(폴백).
 
@@ -128,7 +132,7 @@ render_notes:  string[]  // 2~4개
 - `screen_text`: 한 장면 = 한 메시지. 4~16자, 굵게. 핵심 단어 `*별표*` 강조 1~2군데.
 - `narration`: 설명·맥락·감정의 완전한 문장. 화면 문구와 중복 금지, 말로 풀어준다. graphic을 쓰면 **항목 라벨 단어를 narration에 포함**(음성 싱크).
 - `visual_direction`: **영문 대문자 키커**(2~3단어). 무드 큐 겸용(RED ZONE=빨강, ✅/green/done=초록).
-- `style`: 다크 시네마틱이 기본(서버가 다크 테마를 우선 추천). `background`는 어두운 색, `accent_color`는 포인트색(#22D3EE 시안, #FFD23F 골드, #7C7CFF 퍼플 등).
+- `style`: 다크 시네마틱이 기본(서버가 다크 테마를 우선 추천). `background`는 어두운 색, `accent_color`는 포인트색(#22D3EE 시안, #FFD23F 골드, #7C7CFF 퍼플 등). 레터박스 상/하단 바는 기본 검정 — 밝은 톤이면 `style.bar:"white"`.
 
 ### 5) 연출(디렉팅) — 너가 장면마다 정한다
 너는 단순 텍스트가 아니라 **연출까지 책임지는 디렉터**다. 내용 흐름에 맞춰 장면마다 `transition`과 `effect`를 직접 배정한다.
