@@ -10,6 +10,14 @@
 # production
 /build
 
+# electron-builder output
+/dist-app
+
+# 프로젝트 전용 node 바이너리 (커밋 안 함; CI 는 actions/setup-node 사용)
+# activate 스크립트는 추적, node 바이너리/전역설치만 제외
+/.toolchain/node
+/.toolchain/npm-global
+
 # remotion render cache
 /.remotion
 

@@ -8,8 +8,12 @@ import path from "node:path";
  * job directory.
  */
 
-export const REPO_ROOT = process.cwd();
-export const DATA_DIR = path.join(REPO_ROOT, "data");
+// REPO_ROOT: where node_modules + remotion/ source live (read-only OK; the
+// Remotion CLI is spawned with this as cwd). Overridable for packaged apps.
+export const REPO_ROOT = process.env.PASTEMOTION_ROOT || process.cwd();
+// DATA_DIR: writable job storage. In a packaged desktop app the install dir is
+// read-only, so Electron points this at userData via PASTEMOTION_DATA.
+export const DATA_DIR = process.env.PASTEMOTION_DATA || path.join(REPO_ROOT, "data");
 export const JOBS_DIR = path.join(DATA_DIR, "jobs");
 export const SKILLS_CONTENT_DIR = path.join(
   REPO_ROOT,

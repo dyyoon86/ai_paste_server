@@ -1,0 +1,11 @@
+# PasteMotion 전용 Node 툴체인 활성화 (Python venv 의 activate 와 동일 개념)
+#   사용:  source .toolchain/activate
+# 이 셸에서만 PATH 앞에 프로젝트 전용 node 를 붙여, 시스템/Hermes node 와
+# 완전히 분리된 상태로 npm/next/electron-builder 를 돌린다.
+PM_HOME="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")/.." && pwd)"
+export PASTEMOTION_TOOLCHAIN="$PM_HOME/.toolchain/node"
+export PATH="$PASTEMOTION_TOOLCHAIN/bin:$PATH"
+# npm 전역 설치도 프로젝트 안으로 가둬 시스템을 절대 건드리지 않게
+export NPM_CONFIG_PREFIX="$PM_HOME/.toolchain/npm-global"
+hash -r 2>/dev/null || true
+echo "[pastemotion] node $(node -v) @ $PASTEMOTION_TOOLCHAIN (격리됨)"
