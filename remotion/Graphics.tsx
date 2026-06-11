@@ -12,17 +12,14 @@ interface GraphicProps {
   words?: Words;
 }
 
-/**
- * 라벨이 내레이션에서 발화되는 시점(프레임)을 찾는다. 못 찾으면 fallback.
- * 라벨의 의미 토큰(2자+)이 자막 단어에 포함되면 매칭.
- */
-function appearFrame(label: string, words: Words, fps: number, fallback: number): number {
-  if (!words || words.length === 0) return fallback;
+/** 라벨이 내레이션에서 발화되는 프레임. 못 찾으면 -1. (의미 토큰 2자+ 포함 매칭) */
+function matchFrame(label: string, words: Words, fps: number): number {
+  if (!words || words.length === 0) return -1;
   const toks = (label || "")
     .replace(/[^\p{L}\p{N} ]/gu, " ")
     .split(/\s+/)
     .filter((w) => w.length >= 2);
-  if (toks.length === 0) return fallback;
+  if (toks.length === 0) return -1;
   let best = Infinity;
   for (const it of words) {
     const ww = (it.w || "").replace(/[^\p{L}\p{N}]/gu, "");
@@ -31,7 +28,24 @@ function appearFrame(label: string, words: Words, fps: number, fallback: number)
       if (ww.includes(tk) || tk.includes(ww)) best = Math.min(best, it.t);
     }
   }
-  return best === Infinity ? fallback : Math.round(best * fps);
+  return best === Infinity ? -1 : Math.round(best * fps);
+}
+
+/**
+ * i번째 항목의 등장 프레임 — 음성 싱크하되 **반드시 순서대로(단조 증가)**.
+ * 라벨이 내레이션에 있으면 그 발화 시점, 없으면 직전+stagger. 항상 앞 항목보다 뒤에 뜬다.
+ * (0~i까지 누적 계산; 항목 수 적어 비용 미미)
+ */
+function appearFrameOrdered(labels: string[], i: number, words: Words, fps: number, stagger: number): number {
+  let prev = -1e9;
+  for (let k = 0; k <= i; k++) {
+    const m = matchFrame(labels[k] ?? "", words, fps);
+    let f = m >= 0 ? m : k === 0 ? 0 : prev + stagger;
+    const minGap = prev + Math.max(3, Math.round(stagger * 0.55));
+    if (f < minGap) f = minGap;
+    prev = f;
+  }
+  return prev;
 }
 
 /** 씬 중앙 인포그래픽 디스패처. 전부 코드(div/SVG)로 그려 외부 미디어 0. */
@@ -73,7 +87,7 @@ const Bars: React.FC<SubProps> = ({ items, accent, text, words }) => {
   return (
     <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "center", gap: width * 0.028, height: "100%", width: "100%" }}>
       {items.map((it, i) => {
-        const af = appearFrame(it.label, words, fps, 6 + i * 6);
+        const af = appearFrameOrdered(items.map((x) => x.label), i, words, fps, 6);
         const g = spring({ frame: frame - af, fps, config: { damping: 15, mass: 0.7, stiffness: 110 } });
         const h = ((it.value ?? 0) / max) * 0.82 + 0.06;
         const barH = interpolate(g, [0, 1], [0.04, h]);
@@ -107,7 +121,7 @@ const Flow: React.FC<SubProps> = ({ items, accent, text, words }) => {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: width * 0.022, alignItems: "center", justifyContent: "center", height: "100%" }}>
       {items.map((it, i) => {
-        const af = appearFrame(it.label, words, fps, i * 8);
+        const af = appearFrameOrdered(items.map((x) => x.label), i, words, fps, 8);
         const g = spring({ frame: frame - af, fps, config: { damping: 14, stiffness: 140 } });
         return (
           <React.Fragment key={i}>
@@ -141,7 +155,7 @@ const Checklist: React.FC<SubProps> = ({ items, accent, text, words }) => {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: width * 0.026, justifyContent: "center", height: "100%", width: width * 0.74, margin: "0 auto" }}>
       {items.map((it, i) => {
-        const af = appearFrame(it.label, words, fps, i * 7);
+        const af = appearFrameOrdered(items.map((x) => x.label), i, words, fps, 7);
         const g = spring({ frame: frame - af, fps, config: { damping: 14, stiffness: 160 } });
         return (
           <div key={i} style={{ display: "flex", alignItems: "center", gap: width * 0.022, opacity: g, transform: `translateX(${interpolate(g, [0, 1], [-24, 0])}px)` }}>
@@ -161,7 +175,7 @@ const Stat: React.FC<SubProps> = ({ items, accent, text, words }) => {
   return (
     <div style={{ display: "flex", gap: width * 0.06, justifyContent: "center", alignItems: "center", height: "100%", flexWrap: "wrap" }}>
       {items.map((it, i) => {
-        const af = appearFrame(it.label, words, fps, i * 8);
+        const af = appearFrameOrdered(items.map((x) => x.label), i, words, fps, 8);
         const g = spring({ frame: frame - af, fps, config: { damping: 16, stiffness: 90 } });
         const val = Math.round(interpolate(g, [0, 1], [0, it.value ?? 0]));
         return (
@@ -186,7 +200,7 @@ const Compare: React.FC<SubProps> = ({ items, accent, text, words }) => {
   return (
     <div style={{ display: "flex", gap: width * 0.03, justifyContent: "center", alignItems: "center", height: "100%" }}>
       {pair.map((it, i) => {
-        const af = appearFrame(it.label, words, fps, i * 10);
+        const af = appearFrameOrdered(items.map((x) => x.label), i, words, fps, 10);
         const g = spring({ frame: frame - af, fps, config: { damping: 15, stiffness: 130 } });
         const hot = i === 1;
         return (
@@ -224,7 +238,7 @@ const Cards: React.FC<SubProps> = ({ items, accent, text, words }) => {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: width * 0.022, justifyContent: "center", height: "100%", width: width * 0.78, margin: "0 auto" }}>
       {items.map((it, i) => {
-        const af = appearFrame(it.label, words, fps, i * 7);
+        const af = appearFrameOrdered(items.map((x) => x.label), i, words, fps, 7);
         const g = spring({ frame: frame - af, fps, config: { damping: 14, stiffness: 150 } });
         return (
           <div
@@ -322,7 +336,7 @@ const Mismatch: React.FC<SubProps> = ({ items, accent, text, words }) => {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: width * 0.04, justifyContent: "center", height: "100%" }}>
       {pairs.map((pair, i) => {
-        const af = appearFrame(pair[0].label + pair[1].label, words, fps, i * 8);
+        const af = appearFrameOrdered(pairs.map((p) => p[0].label + p[1].label), i, words, fps, 8);
         const g = spring({ frame: frame - af, fps, config: { damping: 14, stiffness: 150 } });
         const box = (label: string) => (
           <div style={{ padding: `${width * 0.02}px ${width * 0.03}px`, borderRadius: width * 0.02, border: `2px solid ${accent}88`, background: `${accent}12`, fontSize: width * 0.042, fontWeight: 800, color: text, wordBreak: "keep-all" }}>{label}</div>
@@ -373,7 +387,7 @@ const Ranking: React.FC<SubProps> = ({ items, accent, text, words }) => {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: width * 0.02, justifyContent: "center", height: "100%", width: width * 0.78, margin: "0 auto" }}>
       {items.map((it, i) => {
-        const af = appearFrame(it.label, words, fps, i * 7);
+        const af = appearFrameOrdered(items.map((x) => x.label), i, words, fps, 7);
         const g = spring({ frame: frame - af, fps, config: { damping: 14, stiffness: 150 } });
         const top = i === 0;
         return (
@@ -395,7 +409,7 @@ const Timeline: React.FC<SubProps> = ({ items, accent, text, words }) => {
   return (
     <div style={{ display: "flex", flexDirection: "column", justifyContent: "center", height: "100%", width: width * 0.74, margin: "0 auto" }}>
       {items.map((it, i) => {
-        const af = appearFrame(it.label, words, fps, i * 7);
+        const af = appearFrameOrdered(items.map((x) => x.label), i, words, fps, 7);
         const g = spring({ frame: frame - af, fps, config: { damping: 14, stiffness: 150 } });
         const last = i === items.length - 1;
         return (
@@ -422,7 +436,7 @@ const Progress: React.FC<SubProps> = ({ items, accent, text, words }) => {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: width * 0.028, justifyContent: "center", height: "100%", width: width * 0.8, margin: "0 auto" }}>
       {items.map((it, i) => {
-        const af = appearFrame(it.label, words, fps, i * 6);
+        const af = appearFrameOrdered(items.map((x) => x.label), i, words, fps, 6);
         const g = spring({ frame: frame - af, fps, config: { damping: 16, stiffness: 90 } });
         const pct = Math.max(0, Math.min(100, it.value ?? 0)) * g;
         return (
