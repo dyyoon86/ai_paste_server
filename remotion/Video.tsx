@@ -103,24 +103,32 @@ export const PasteVideo: React.FC<VideoProps> = ({ plan }) => {
   );
 };
 
-/** 상단 검정 제목바. `*강조*` 세그먼트는 accent 색으로. */
+/** 제목을 두 줄로 균형 분할 (가운데 공백 기준). */
+function splitTwoLines(s: string): [string, string] {
+  const t = s.replace(/\*/g, "").trim();
+  if (t.length <= 8 || !t.includes(" ")) return [t, ""];
+  const mid = t.length / 2;
+  const spaces = [...t.matchAll(/ /g)].map((m) => m.index ?? 0);
+  let best = spaces[0];
+  for (const idx of spaces) if (Math.abs(idx - mid) < Math.abs(best - mid)) best = idx;
+  return [t.slice(0, best).trim(), t.slice(best + 1).trim()];
+}
+
+/**
+ * 상단 검정 제목바 — 두 줄, 첫 줄은 밝은색(accent) 강조, 타이트.
+ * 쇼츠 기본: 제목은 상단바에 꽉 차게 타이트하게.
+ */
 const ShortsTitleBar: React.FC<{ title: string; accent: string; barHeight: number }> = ({ title, accent, barHeight }) => {
   const frame = useCurrentFrame();
   const { fps, width } = useVideoConfig();
   if (!title) return null;
   const pop = interpolate(frame, [0, Math.round(fps * 0.3)], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
-  const parts = title
-    .split(/(\*[^*]+\*)/g)
-    .filter(Boolean)
-    .map((seg) => {
-      const hot = seg.startsWith("*") && seg.endsWith("*");
-      return { t: hot ? seg.slice(1, -1) : seg, hot };
-    });
-  // 제목 길이에 맞춰 폰트 자동 축소 → 칸에 딱 맞게(가운데 정렬은 flex center).
-  const visibleLen = parts.reduce((n, p) => n + p.t.length, 0);
+  const [line1, line2] = splitTwoLines(title);
+  const longest = Math.max(line1.length, line2.length, 1);
+  // 가장 긴 줄이 폭에 꽉 차게 (타이트). 2줄이면 더 크게 가능.
   const fontSize = Math.max(
-    Math.round(width * 0.04),
-    Math.min(Math.round(width * 0.07), Math.round((width * 1.5) / Math.max(8, visibleLen))),
+    Math.round(width * 0.05),
+    Math.min(Math.round(width * 0.092), Math.round((width * 0.92) / longest)),
   );
   return (
     <div
@@ -132,9 +140,10 @@ const ShortsTitleBar: React.FC<{ title: string; accent: string; barHeight: numbe
         height: barHeight,
         background: "#000",
         display: "flex",
+        flexDirection: "column",
         alignItems: "center",
         justifyContent: "center",
-        padding: `0 ${width * 0.04}px`,
+        padding: `0 ${width * 0.035}px`,
         opacity: pop,
       }}
     >
@@ -142,19 +151,15 @@ const ShortsTitleBar: React.FC<{ title: string; accent: string; barHeight: numbe
         style={{
           fontSize,
           fontWeight: 900,
-          lineHeight: 1.08,
-          letterSpacing: -1.5,
-          color: "#fff",
+          lineHeight: 1.02,
+          letterSpacing: -2,
           textAlign: "center",
           wordBreak: "keep-all",
-          transform: `scale(${interpolate(pop, [0, 1], [0.92, 1])})`,
+          transform: `scale(${interpolate(pop, [0, 1], [0.94, 1])})`,
         }}
       >
-        {parts.map((p, i) => (
-          <span key={i} style={{ color: p.hot ? accent : "#fff" }}>
-            {p.t}
-          </span>
-        ))}
+        <div style={{ color: accent }}>{line1}</div>
+        {line2 ? <div style={{ color: "#fff" }}>{line2}</div> : null}
       </div>
     </div>
   );
@@ -202,26 +207,58 @@ const ShortsBottomBar: React.FC<{
 
   const local = frame - item.start;
   const localSec = local / fps;
-  const enter = spring({ frame: local, fps, config: { damping: 18, mass: 0.5, stiffness: 160 } });
 
   // 카라오케: TTS 단어 타이밍(subtitleWords)을 쓰고, 없으면 씬 길이에 균등 분배.
   const sceneSec = (cur.durationInFrames ?? fps) / fps;
-  const tokens =
+  const tokens = (
     cur.subtitleWords && cur.subtitleWords.length > 0
       ? cur.subtitleWords.map((x) => ({ t: x.t, w: x.w }))
       : caption
           .split(/\s+/)
           .filter(Boolean)
-          .map((w, i, arr) => ({ t: (i * sceneSec) / Math.max(1, arr.length), w }));
+          .map((w, i, arr) => ({ t: (i * sceneSec) / Math.max(1, arr.length), w }))
+  ).map((x) => ({ t: x.t, w: x.w.replace(/\*/g, "") })).filter((x) => x.w.length > 0);
+  if (tokens.length === 0) return null;
 
-  // 현재 말하는 단어 = 시작시간이 지난 마지막 단어
+  const fontSize = Math.round(width * 0.052);
+  // 한 줄에 들어갈 최대 글자수 (자막은 절대 두 줄 금지 — 넘치면 다음 덩어리로).
+  const maxChars = Math.max(8, Math.floor((width * 0.8) / (fontSize * 1.05)));
+  // 토큰을 한 줄 분량 덩어리(라인)로 그룹화.
+  const lines: { toks: { t: number; w: string }[]; startIdx: number }[] = [];
+  let buf: { t: number; w: string }[] = [];
+  let bufLen = 0;
+  let startIdx = 0;
+  tokens.forEach((tok, i) => {
+    const add = tok.w.length + (buf.length ? 1 : 0);
+    if (buf.length && bufLen + add > maxChars) {
+      lines.push({ toks: buf, startIdx });
+      buf = [];
+      bufLen = 0;
+      startIdx = i;
+    }
+    buf.push(tok);
+    bufLen += tok.w.length + (buf.length > 1 ? 1 : 0);
+  });
+  if (buf.length) lines.push({ toks: buf, startIdx });
+
+  // 현재 말하는 단어(전역 인덱스)
   let current = -1;
   for (let i = 0; i < tokens.length; i++) {
     if (localSec >= tokens[i].t) current = i;
     else break;
   }
+  // 현재 단어가 속한 라인(덩어리). 아직 시작 전이면 첫 라인.
+  let activeLine = lines[0];
+  for (const ln of lines) {
+    const last = ln.startIdx + ln.toks.length - 1;
+    if (current >= ln.startIdx && current <= last) { activeLine = ln; break; }
+    if (current > last) activeLine = ln; // 마지막으로 지나간 라인 유지
+  }
 
-  const fontSize = Math.round(width * 0.052);
+  // 라인 등장 팝 (그 라인 첫 단어 시작 시점 기준)
+  const lineStartFrame = activeLine.toks[0].t * fps;
+  const enter = spring({ frame: local - lineStartFrame, fps, config: { damping: 18, mass: 0.5, stiffness: 170 } });
+
   return (
     <div
       style={{
@@ -234,29 +271,30 @@ const ShortsBottomBar: React.FC<{
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        padding: `0 ${width * 0.06}px`,
+        padding: `0 ${width * 0.05}px`,
       }}
     >
       <div
         style={{
           display: "flex",
-          flexWrap: "wrap",
+          flexWrap: "nowrap",
+          whiteSpace: "nowrap",
           justifyContent: "center",
           gap: `${fontSize * 0.26}px`,
           fontSize,
           fontWeight: 800,
-          lineHeight: 1.3,
+          lineHeight: 1.25,
           textAlign: "center",
-          wordBreak: "keep-all",
-          opacity: interpolate(enter, [0, 1], [0, 1]),
-          transform: `translateY(${interpolate(enter, [0, 1], [14, 0])}px)`,
+          opacity: interpolate(enter, [0, 1], [0, 1], { extrapolateRight: "clamp" }),
+          transform: `translateY(${interpolate(enter, [0, 1], [12, 0], { extrapolateRight: "clamp" })}px)`,
         }}
       >
-        {tokens.map((tok, i) => {
-          const color = i < current ? "#FFFFFF" : i === current ? accent : "#6E6E6E";
+        {activeLine.toks.map((tok, j) => {
+          const gi = activeLine.startIdx + j;
+          const color = gi < current ? "#FFFFFF" : gi === current ? accent : "#6E6E6E";
           return (
-            <span key={i} style={{ color }}>
-              {tok.w.replace(/\*/g, "")}
+            <span key={j} style={{ color }}>
+              {tok.w}
             </span>
           );
         })}

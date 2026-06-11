@@ -32,8 +32,12 @@ export const Scene: React.FC<SceneProps> = ({ scene, index, total, animation, vi
 
   const enter = enterStyle(localFrame, fps, animation.sceneEnter as SceneEnter);
 
-  // 콘텐츠는 등장 후 고정(흔들림 없음). 모션은 배경/전환/등장에서만.
-  const combinedTransform = enter.transform;
+  // 2초 이상 정지 금지 — 단, 흔들림(sin 진동) 금지. 아주 느린 '모노톤' 줌인만.
+  // 한 방향으로만 천천히 확대되므로 떨리지 않고 화면이 살아있다.
+  const slowZoom = 1 + Math.min((localFrame / fps) * 0.012, 0.05);
+  const combinedTransform = [enter.transform === "none" ? "" : enter.transform, `scale(${slowZoom.toFixed(4)})`]
+    .filter(Boolean)
+    .join(" ");
 
   const accent = scene.accent || visual.accent;
   const { layout } = theme;
