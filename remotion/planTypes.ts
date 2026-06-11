@@ -39,8 +39,19 @@ export interface ScenePlan {
   image: string;
   icon: string;
   points: string[];
+  graphic?: GraphicSpec;
   audioUrl?: string;
   subtitleWords?: Array<{ t: number; w: string }>;
+}
+
+export interface GraphicItem {
+  label: string;
+  value?: number;
+  sub?: string;
+}
+export interface GraphicSpec {
+  type: string;
+  items: GraphicItem[];
 }
 
 export interface VisualDefaults {

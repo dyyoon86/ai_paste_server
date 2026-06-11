@@ -17,7 +17,7 @@ describe("enrich harness", () => {
     for (const p of pts) expect(p.length).toBeLessThanOrEqual(12);
   });
 
-  it("only fills missing icon/points (keeps brain values)", () => {
+  it("fills missing icon, keeps brain values, and does NOT auto-fill points", () => {
     const spec = {
       scenes: [
         { id: 1, start: 0, end: 3, screen_text: "차단", narration: "막습니다", visual_direction: "", transition: "fade", effect: "none", icon: "🔥", points: ["내 포인트"] },
@@ -28,6 +28,6 @@ describe("enrich harness", () => {
     expect(out.scenes[0].icon).toBe("🔥"); // kept
     expect(out.scenes[0].points).toEqual(["내 포인트"]); // kept
     expect(out.scenes[1].icon).toBe("🏦"); // filled
-    expect((out.scenes[1].points ?? []).length).toBeGreaterThan(0); // filled
+    expect((out.scenes[1].points ?? []).length).toBe(0); // points는 자동 생성 안 함
   });
 });

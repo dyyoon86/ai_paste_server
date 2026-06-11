@@ -67,7 +67,8 @@ export function enrichSpec(spec: VideoSpec): VideoSpec {
     scenes: spec.scenes.map((s) => ({
       ...s,
       icon: s.icon && s.icon.trim() ? s.icon : pickIcon(s),
-      points: s.points && s.points.filter((p) => p && p.trim()).length > 0 ? s.points : derivePoints(s),
+      // points는 명시적으로 줄 때만 표시(자동 생성하면 내레이션과 중복되어 지저분).
+      points: s.points && s.points.filter((p) => p && p.trim()).length > 0 ? s.points : [],
     })),
   };
 }

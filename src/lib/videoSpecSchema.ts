@@ -29,6 +29,21 @@ export const sceneSchema = z.object({
   icon: z.string().optional(),
   /** Short summary phrases shown as motion typography in the center (2~4, brief). */
   points: z.array(z.string()).optional(),
+  /** Optional infographic for the scene center (bars / flow / compare / checklist / stat). */
+  graphic: z
+    .object({
+      type: z.string(),
+      items: z
+        .array(
+          z.object({
+            label: z.string().default(""),
+            value: z.number().optional(),
+            sub: z.string().optional(),
+          }),
+        )
+        .default([]),
+    })
+    .optional(),
 });
 
 export const assetSchema = z.object({

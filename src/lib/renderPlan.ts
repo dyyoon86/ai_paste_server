@@ -30,6 +30,8 @@ export interface ScenePlan {
   icon: string;
   /** Short summary phrases shown as staggered motion typography in the center. */
   points: string[];
+  /** Optional infographic for the scene center. */
+  graphic?: GraphicSpec;
   /** Optional per-scene narration audio (data: URL), injected server-side at render. */
   audioUrl?: string;
   /** Word timings for the karaoke subtitle (sec from scene start). Injected at render. */
@@ -38,6 +40,16 @@ export interface ScenePlan {
 
 export type SceneEffect = "none" | "punch-in" | "punch-out";
 export type TransitionKindPlan = "cut" | "fade" | "slide" | "zoom" | "wipe";
+
+export interface GraphicItem {
+  label: string;
+  value?: number;
+  sub?: string;
+}
+export interface GraphicSpec {
+  type: string;
+  items: GraphicItem[];
+}
 
 /** Frames a cross-scene transition overlaps (≈0.4s @30fps). */
 export const TRANSITION_FRAMES = 12;
@@ -223,6 +235,10 @@ export function buildRenderPlan(
       image: scene.image ?? "",
       icon: scene.icon ?? "",
       points: (scene.points ?? []).filter((p) => p && p.trim()),
+      graphic:
+        scene.graphic && Array.isArray(scene.graphic.items) && scene.graphic.items.length > 0
+          ? { type: scene.graphic.type, items: scene.graphic.items }
+          : undefined,
     };
   });
 

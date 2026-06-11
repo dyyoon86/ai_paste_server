@@ -1,5 +1,5 @@
 import React from "react";
-import { useCurrentFrame, useVideoConfig, interpolate, Easing } from "remotion";
+import { useCurrentFrame, useVideoConfig, interpolate, spring, Easing } from "remotion";
 import { fontFamily } from "./fonts";
 import { textEmphasisStyle, punchStyle } from "./animations";
 import type { PlanTheme, SceneEffect } from "./planTypes";
@@ -16,6 +16,7 @@ interface TextBlockProps {
   theme: PlanTheme;
   effect: SceneEffect;
   icon?: string;
+  placement?: "center" | "top";
 }
 
 /**
@@ -34,6 +35,7 @@ export const TextBlock: React.FC<TextBlockProps> = ({
   theme,
   effect,
   icon,
+  placement = "center",
 }) => {
   const frame = useCurrentFrame();
   const { fps, width } = useVideoConfig();
@@ -44,8 +46,9 @@ export const TextBlock: React.FC<TextBlockProps> = ({
       : textEmphasisStyle(frame, fps, emphasis);
 
   const len = screenText.length;
-  const base = width * 0.11 * typo.headlineScale;
-  const headlineSize = Math.max(width * 0.05, base - Math.max(0, len - 8) * (width * 0.0035));
+  // 더 절제된 크기 (이전이 과하게 컸음).
+  const base = width * 0.084 * typo.headlineScale;
+  const headlineSize = Math.max(width * 0.044, base - Math.max(0, len - 8) * (width * 0.0028));
 
   const isLeft = layout.align === "left";
   const isBottom = layout.align === "bottom";
@@ -72,7 +75,11 @@ export const TextBlock: React.FC<TextBlockProps> = ({
     alignItems: isLeft || isBottom ? "flex-start" : "center",
     textAlign: isLeft || isBottom ? "left" : "center",
     fontFamily: fontFamily(typo.fontId),
-    ...(isBottom ? { bottom: safeArea * 1.4 } : { top: "50%", transform: "translateY(-50%)" }),
+    ...(placement === "top"
+      ? { top: "13%" } // 상단 키커(visual_direction) 아래로 — 겹침 방지
+      : isBottom
+        ? { bottom: safeArea * 1.4 }
+        : { top: "50%", transform: "translateY(-50%)" }),
   };
 
   const cleanPoints = (points ?? []).map((p) => p.trim()).filter(Boolean).slice(0, 4);
@@ -80,7 +87,24 @@ export const TextBlock: React.FC<TextBlockProps> = ({
   return (
     <div style={container}>
       {icon ? (
-        <div style={{ fontSize: width * 0.15, lineHeight: 1, transform: emph.transform }}>{icon}</div>
+        (() => {
+          // 이모지 펀치 등장 — 작게서 튀어나오며 살짝 회전 오버슈트.
+          const s = spring({ frame, fps, config: { damping: 9, mass: 0.8, stiffness: 170, overshootClamping: false } });
+          const sc = interpolate(s, [0, 1], [0.2, 1]);
+          const rot = interpolate(s, [0, 1], [-12, 0]);
+          return (
+            <div
+              style={{
+                fontSize: width * 0.24,
+                lineHeight: 1,
+                transform: `scale(${sc.toFixed(3)}) rotate(${rot.toFixed(1)}deg)`,
+                filter: "drop-shadow(0 10px 24px rgba(0,0,0,0.45))",
+              }}
+            >
+              {icon}
+            </div>
+          );
+        })()
       ) : null}
 
       {layout.accentBar ? (
@@ -102,72 +126,93 @@ export const TextBlock: React.FC<TextBlockProps> = ({
       <div
         style={{
           fontSize: headlineSize,
-          lineHeight: 1.1,
+          lineHeight: 1.12,
           fontWeight: typo.weightHeadline,
           letterSpacing: typo.letterSpacing,
           fontStyle: typo.italic ? "italic" : "normal",
           textTransform: typo.upper ? "uppercase" : "none",
           transform: emph.transform,
-          ...(highlight
-            ? {
-                background: accent,
-                color: pickReadable(accent),
-                padding: "0.08em 0.28em",
-                borderRadius: 14,
-                boxDecorationBreak: "clone",
-                WebkitBoxDecorationBreak: "clone",
-              }
-            : outlineStyle),
+          display: "flex",
+          flexWrap: "wrap",
+          gap: `${headlineSize * 0.06}px ${headlineSize * 0.22}px`,
+          justifyContent: isLeft || isBottom ? "flex-start" : "center",
         }}
       >
-        {screenText}
+        {headlineTokens(screenText, highlight).map((tok, i) => {
+          // 단어별 펀치 등장 — 약한 오버슈트로 톡톡 튀어나오게 (좌→우 스태거)
+          const s = spring({
+            frame: frame - i * 4,
+            fps,
+            config: { damping: 11, mass: 0.6, stiffness: 200, overshootClamping: false },
+          });
+          const op = interpolate(s, [0, 0.6], [0, 1], { extrapolateRight: "clamp" });
+          const ty = interpolate(s, [0, 1], [headlineSize * 0.85, 0]);
+          const sc = interpolate(s, [0, 1], [0.35, 1]);
+          const hot = tok.hot;
+          return (
+            <span
+              key={i}
+              style={{
+                display: "inline-block",
+                opacity: op,
+                transform: `translateY(${ty}px) scale(${sc})`,
+                color: hot ? pickReadable(accent) : layout.outline ? "transparent" : text,
+                background: hot ? accent : "transparent",
+                padding: hot ? "0.02em 0.2em" : 0,
+                borderRadius: hot ? 12 : 0,
+                ...(hot ? {} : layout.outline ? outlineStyle : { textShadow: glowShadow }),
+              }}
+            >
+              {tok.t}
+            </span>
+          );
+        })}
       </div>
 
       {layout.decoration === "underline" ? (
         <div style={{ width: width * 0.22, height: 5, background: accent, borderRadius: 999 }} />
       ) : null}
 
-      {/* Short summary points — staggered motion typography (not the full narration). */}
+      {/* 요약 포인트 — 알약형 칩 그리드 (레퍼런스2의 리스트 스타일) */}
       {cleanPoints.length > 0 ? (
         <div
           style={{
             display: "flex",
-            flexDirection: "column",
-            gap: width * 0.018,
-            marginTop: width * 0.015,
-            alignItems: isLeft || isBottom ? "flex-start" : "center",
+            flexWrap: "wrap",
+            gap: width * 0.016,
+            marginTop: width * 0.03,
+            maxWidth: width * 0.82,
+            justifyContent: isLeft || isBottom ? "flex-start" : "center",
           }}
         >
           {cleanPoints.map((p, i) => {
-            const appear = 14 + i * 9;
-            const t = interpolate(frame, [appear, appear + 9], [0, 1], {
-              extrapolateLeft: "clamp",
-              extrapolateRight: "clamp",
-              easing: Easing.out(Easing.cubic),
+            // 칩 펀치 등장 — 순차로 톡톡 팝 (스프링 오버슈트)
+            const s = spring({
+              frame: frame - (10 + i * 6),
+              fps,
+              config: { damping: 12, mass: 0.5, stiffness: 220, overshootClamping: false },
             });
+            const t = interpolate(s, [0, 0.6], [0, 1], { extrapolateRight: "clamp" });
+            const sc = interpolate(s, [0, 1], [0.6, 1]);
             return (
               <div
                 key={i}
                 style={{
                   display: "flex",
                   alignItems: "center",
-                  gap: width * 0.014,
+                  gap: width * 0.012,
                   opacity: t,
-                  transform: `translateY(${(1 - t) * 18}px)`,
-                  fontSize: width * 0.046,
+                  transform: `translateY(${(1 - t) * 18}px) scale(${sc.toFixed(3)})`,
+                  fontSize: width * 0.038,
                   fontWeight: 700,
                   color: text,
+                  padding: `${width * 0.012}px ${width * 0.026}px`,
+                  border: `${Math.max(1, width * 0.0018)}px solid ${accent}66`,
+                  background: `${accent}14`,
+                  borderRadius: 999,
                 }}
               >
-                <span
-                  style={{
-                    width: width * 0.018,
-                    height: width * 0.018,
-                    borderRadius: 999,
-                    background: accent,
-                    flexShrink: 0,
-                  }}
-                />
+                <span style={{ color: accent, fontWeight: 900 }}>{i + 1}</span>
                 <span>{p}</span>
               </div>
             );
@@ -177,6 +222,24 @@ export const TextBlock: React.FC<TextBlockProps> = ({
     </div>
   );
 };
+
+/** 헤드라인을 단어 토큰으로. `*강조*` 안의 단어는 hot=true (accent 칠). */
+function headlineTokens(text: string, _emphasisHighlight: boolean): { t: string; hot: boolean }[] {
+  const out: { t: string; hot: boolean }[] = [];
+  text
+    .split(/(\*[^*]+\*)/g)
+    .filter(Boolean)
+    .forEach((seg) => {
+      const hot = seg.startsWith("*") && seg.endsWith("*");
+      const txt = hot ? seg.slice(1, -1) : seg;
+      txt
+        .trim()
+        .split(/\s+/)
+        .filter(Boolean)
+        .forEach((w) => out.push({ t: w, hot }));
+    });
+  return out;
+}
 
 /** 0..1 glow → 2-digit hex alpha for color suffix. */
 function hexAlpha(glow: number): string {
