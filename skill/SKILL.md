@@ -4,8 +4,8 @@ description: >-
   쇼츠/숏폼 영상의 주제나 제목 한 줄을 받아, Remotion Paste Server(PasteMotion)에 붙여넣어 MP4로
   렌더링되는 VIDEO_SPEC_JSON을 만든다. 이 스킬은 "두뇌" 역할만 한다 — 영상을 직접 렌더하지 않고,
   오직 ---BEGIN_VIDEO_SPEC_JSON--- 와 ---END_VIDEO_SPEC_JSON--- 사이의 유효한 JSON 한 덩어리만
-  출력한다. 강한 첫 3초 훅, 5~6장면 내러티브, 짧고 굵은 화면 문구, 위협=빨강·완료=초록 무드 큐,
-  서버 스키마 완전 준수가 보장된다. 사용자가 영상 주제·제목·아이디어를 주며 "쇼츠 만들어줘",
+  출력한다. 강한 첫 3초 훅, 길이에 맞춘 장면 수, 영문 키커, *강조* 헤드라인, 14종 인포그래픽(음성싱크),
+  위협=빨강·완료=초록 무드 큐, 다크 시네마틱, 서버 스키마 완전 준수가 보장된다. 사용자가 영상 주제·제목·아이디어를 주며 "쇼츠 만들어줘",
   "영상 스펙/JSON 만들어줘", "이 주제로 영상", "릴스/숏폼 기획", "PasteMotion에 넣을 거"라고 할 때 사용한다.
   Use whenever the user gives a short-form video topic/title and wants spec JSON to paste into the renderer.
 ---
@@ -51,7 +51,7 @@ summary:       문자열
 core_message:  문자열 (한 문장)
 cta:           { enabled:boolean, text:string, action:string }
 scenes:        1~30개, 각 { id:int, start:number, end:number, screen_text, narration, visual_direction(영문 키커), transition, effect, icon?, points?, graphic? }
-               graphic?: { type:"bars|flow|checklist|stat|compare", items:[{label, value?, sub?}] }
+               graphic?: { type:<아래 14종>, items:[{label, value?, sub?}] }   // bars/flow/checklist/stat/compare/cards/quote/badge/mismatch/gauge/ranking/timeline/progress/versus (용도는 ★graphic 절)
 assets:        []        // MVP는 비워둘 것 (외부 URL 금지; 넣을 경우 url은 유효한 URL이어야 함)
 ```
 
@@ -133,7 +133,7 @@ render_notes:  string[]  // 2~4개
 **길면 골격을 늘린다** — 문제 심화, 근거/사례, 단계(step), 비교를 장면으로 더 쪼개 채운다(억지 분할 금지, 각 장면은 한 메시지).
 
 ### 4) 텍스트
-- `title`(영상 제목): 상단 검정바에 **두 줄로 꽉 차게** 들어간다 → **약 10~20자**로 써라(너무 짧으면 허전). 서버가 가운데서 두 줄로 나누고 **첫 줄을 밝은 accent 색으로 강조**한다. (예: `"AI 코딩 체감 생산성 진짜 오를까"`, `"유튜브 떡상 시간대 따로 있다"`)
+- `title`(영상 제목): 상단 검정바에 **두 줄로 꽉 차게** 들어간다 → **약 10~20자**로 써라(너무 짧으면 허전). 서버가 가운데서 두 줄로 나누고 **첫 줄을 밝은 accent 색으로 자동 강조**한다. **title엔 `*별표*` 쓰지 마라**(줄 단위로 자동 색칠됨). (예: `"AI 코딩 체감 생산성 정말 오를까"`, `"유튜브 떡상 시간대 따로 있다"`)
 - `screen_text`: 한 장면 = 한 메시지. 4~16자, 굵게. 핵심 단어 `*별표*` 강조 1~2군데.
 - `narration`: 설명·맥락·감정의 완전한 문장. 화면 문구와 중복 금지, 말로 풀어준다. graphic을 쓰면 **항목 라벨 단어를 narration에 포함**(음성 싱크).
 - `visual_direction`: **영문 대문자 키커**(2~3단어). 무드 큐 겸용(RED ZONE=빨강, ✅/green/done=초록).
@@ -141,7 +141,7 @@ render_notes:  string[]  // 2~4개
 
 ### 5) 연출(디렉팅) — 너가 장면마다 정한다
 너는 단순 텍스트가 아니라 **연출까지 책임지는 디렉터**다. 내용 흐름에 맞춰 장면마다 `transition`과 `effect`를 직접 배정한다.
-- **리듬**: 같은 전환만 반복하지 말 것. 도입은 `fade`, 전개·나열은 `slide`, 핵심 강조는 `zoom`, 전/후 대비는 `wipe`, 긴박·속도감은 `cut`.
+- **전환**: **기본 `cut`**(세로 숏폼에 깔끔하고 빠름). 잔잔하게 넘길 장면만 가끔 `fade`. (slide/zoom/wipe는 세로에서 두 씬이 겹쳐 보여 지양.)
 - **강조(effect)**: 핵심 숫자·결정적 한 방·반전 장면엔 `punch-in`(패스트 줌인)으로 확 끌어당겨라. 큰 것에서 정리되는 마무리엔 `punch-out`. 잔잔한 장면은 `none`.
 - **정지 금지**: 어떤 장면도 화면이 2초 이상 멈춘 듯 보이면 안 된다 — 짧게 끊거나 punch로 움직임을 준다.
 - 등장/배경 모션과 폰트·레이아웃은 서버 **템플릿**이 자동 처리하므로 신경 쓰지 않는다. 너는 **장면 문구·내레이션·무드 큐·transition·effect·페이싱**만 결정한다.
@@ -152,7 +152,7 @@ render_notes:  string[]  // 2~4개
 - [ ] **타이트 페이싱**: 장면당 2~4초, 2초 이상 정지돼 보이는 장면 없음
 - [ ] **연출 배정**: transition 기본 cut, 핵심 장면엔 effect=punch-in
 - [ ] **모든 scene에 `visual_direction`(영문 키커) + (`icon` 또는 `graphic`) 포함**
-- [ ] **`screen_text`/`title`에 핵심 단어 `*별표*` 강조** (1~2군데)
+- [ ] **`screen_text`에 핵심 단어 `*별표*` 강조** (1~2군데; title엔 `*별표*` 쓰지 않음)
 - [ ] **graphic 쓴 장면은 `label` 단어가 `narration`에 있음** (음성 싱크)
 - [ ] 데이터·단계·목록·수치·비교 장면은 graphic 활용(2~4개 장면)
 - [ ] duration_seconds ≤ 180, resolution이 aspect_ratio와 일치
@@ -167,7 +167,7 @@ render_notes:  string[]  // 2~4개
 ---BEGIN_VIDEO_SPEC_JSON---
 {
   "schema": "remotion.one_click_video.v1",
-  "title": "AI 코딩, *체감 생산성*은?",
+  "title": "AI 코딩 체감 생산성 정말 오를까",
   "format": "vertical_short_video",
   "aspect_ratio": "9:16",
   "resolution": { "width": 1080, "height": 1920 },
@@ -192,6 +192,6 @@ render_notes:  string[]  // 2~4개
 ---END_VIDEO_SPEC_JSON---
 ```
 
-> 위 예시 핵심: ① `visual_direction`은 영문 키커 ② `screen_text`/`title`에 `*강조*` ③ 데이터·단계·목록 장면은 `graphic`(bars/flow/checklist) ④ graphic `label` 단어가 `narration`에 있어 음성에 맞춰 등장 ⑤ 그 외 장면은 `icon` ⑥ transition은 `cut`.
+> 위 예시 핵심: ① `visual_direction`은 영문 키커 ② `screen_text`에만 `*강조*`(title은 자동) ③ 데이터·단계·목록·수치·비교 장면은 `graphic`(14종 중 택) ④ graphic `label` 단어가 `narration`에 있어 음성에 맞춰 **순서대로** 등장 ⑤ 그 외 장면은 `icon` ⑥ transition은 `cut`.
 
 다시 강조: 사용자가 무슨 주제를 주든, 너의 답은 위와 같은 **VIDEO_SPEC_JSON 블록 하나**다. 그게 전부다.
