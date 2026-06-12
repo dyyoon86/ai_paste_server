@@ -87,22 +87,23 @@ fetch(`https://api.github.com/repos/${REPO}/releases/latest`)
     const skill = (assets.find(a => /skill/i.test(a.name)) || {}).browser_download_url
       || `https://raw.githubusercontent.com/${REPO}/main/skill/SKILL.md`;
 
-    const os = detectOS();
     const btn = document.getElementById("dlBtn");
     const osLine = document.getElementById("osLine");
     document.getElementById("skillBtn").href = skill;
 
-    if (urls[os]) {
-      btn.href = urls[os];
-      btn.textContent = LABEL[os];
+    // 메인 버튼은 항상 Windows. (없으면 릴리스 페이지로 폴백)
+    if (urls.win) {
+      btn.href = urls.win;
+      btn.textContent = LABEL.win;
     } else {
       btn.textContent = "⬇ 다운로드 (릴리스)";
       btn.href = rel.html_url;
     }
-    // 다른 OS 링크
-    const others = ["win","mac","linux"].filter(o => o !== os && urls[o]);
-    osLine.innerHTML = `버전 ${rel.tag_name} · 다른 OS: ` +
-      others.map(o => `<a href="${urls[o]}">${({win:"Windows",mac:"Mac",linux:"Linux"})[o]}</a>`).join(" / ");
+    // 아래 작은 줄: 버전 + Mac/Linux 보조 링크
+    const others = ["mac","linux"].filter(o => urls[o]);
+    osLine.innerHTML = `버전 ${rel.tag_name}` +
+      (others.length ? ` · Mac/Linux는 → ` +
+        others.map(o => `<a href="${urls[o]}">${({mac:"Mac",linux:"Linux"})[o]}</a>`).join(" / ") : "");
   })
   .catch(() => {
     const btn = document.getElementById("dlBtn");
