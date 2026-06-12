@@ -19,7 +19,11 @@ const N = args.includes("--n") ? parseInt(args[args.indexOf("--n") + 1], 10) : 0
 const NO_CRITIC = args.includes("--no-critic");
 
 const golden = JSON.parse(readFileSync(path.join(DIR, "golden_set.json"), "utf8"));
-const SKILL = readFileSync(path.join(ROOT, "skill", "SKILL.md"), "utf8");
+// --skill <path> 로 다른 두뇌(예: skill/SKILL_PRO.md)를 측정. 기본은 skill/SKILL.md.
+const SKILL_REL = args.includes("--skill") ? args[args.indexOf("--skill") + 1] : "skill/SKILL.md";
+const SKILL_PATH = path.isAbsolute(SKILL_REL) ? SKILL_REL : path.join(ROOT, SKILL_REL);
+const SKILL = readFileSync(SKILL_PATH, "utf8");
+const SKILL_TAG = path.basename(SKILL_PATH).replace(/\.md$/, "");
 const RUBRIC = readFileSync(path.join(DIR, "rubric.md"), "utf8");
 const topics = N > 0 ? golden.topics.slice(0, N) : golden.topics;
 
@@ -56,12 +60,12 @@ try { sha = execFileSync("git", ["rev-parse", "--short", "HEAD"], { cwd: ROOT, e
 
 // ★ 재개 가능(resumable): 진행 중 캐시에 (run,topic)별 결과를 즉시 저장.
 //   세션이 죽어도 다시 실행하면 끝난 것은 건너뛰고 이어서 완료한다.
-const cacheFile = path.join(resDir, `.cache_${sha}_r${RUNS}_n${topics.length}.json`);
+const cacheFile = path.join(resDir, `.cache_${SKILL_TAG}_${sha}_r${RUNS}_n${topics.length}.json`);
 let cache = {};
 if (existsSync(cacheFile)) { try { cache = JSON.parse(readFileSync(cacheFile, "utf8")); } catch {} }
 const key = (run, topic) => `${run}::${topic}`;
 
-console.log(`골든셋 ${topics.length}개 × ${RUNS}회 측정${NO_CRITIC ? " (구조점수만)" : ""}  (resumable)\n`);
+console.log(`[${SKILL_TAG}] 골든셋 ${topics.length}개 × ${RUNS}회 측정${NO_CRITIC ? " (구조점수만)" : ""}  (resumable)\n`);
 
 function scoreTopic(topic) {
   let spec = null;
@@ -106,7 +110,7 @@ console.log(`평균 ${mean.toFixed(1)} ± ${sd.toFixed(1)}  (구조 ${avg(runAve
 console.log(`→ 개선이 "진짜"이려면 평균 차이가 ±${(sd * 2).toFixed(1)}(2σ)를 넘어야 함.`);
 
 const ts = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
-const file = path.join(resDir, `${ts}_${sha}_r${RUNS}.json`);
+const file = path.join(resDir, `${ts}_${SKILL_TAG}_${sha}_r${RUNS}.json`);
 writeFileSync(file, JSON.stringify({ sha, ts, goldenVersion: golden.version, runs: RUNS, mean, sd, runAverages }, null, 2));
 try { if (existsSync(cacheFile)) execFileSync("rm", ["-f", cacheFile]); } catch {}
 console.log(`\n기록 저장: eval/results/${path.basename(file)}`);

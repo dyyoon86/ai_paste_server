@@ -97,8 +97,12 @@
       <div class="step"><div class="num">1</div><div>
         <h3>프롬프트를 AI에 붙여넣기</h3>
         <p>ChatGPT·Gemini·Claude 어디든 프롬프트를 붙여넣고, 만들 영상 주제를 한 줄 적어요.</p>
-        <button class="skill" id="copyBtn">📋 프롬프트 복사</button>
-        <a class="skill" id="skillBtn" href="#" target="_blank" rel="noopener" style="margin-left:8px">프롬프트 보기</a>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="skill" id="copyProBtn" style="border-color:var(--accent);color:var(--fg)">⚡ Pro 프롬프트 복사 <span style="color:var(--muted);font-weight:500">· 바이럴·몰입 강화</span></button>
+          <button class="skill" id="copyBtn">📋 기본 프롬프트 복사</button>
+          <a class="skill" id="skillBtn" href="#" target="_blank" rel="noopener">기본 보기</a>
+        </div>
+        <p style="margin-top:8px;font-size:12px;color:var(--muted)">잘 모르겠으면 <b style="color:var(--fg)">⚡ Pro</b>를 쓰세요 — 훅·서사·카피가 더 셉니다.</p>
         <div id="zipLine" style="margin-top:10px;font-size:13px;color:var(--muted);display:none">
           또는 <b style="color:var(--fg)">Claude Skills</b> 쓰면 → <a id="zipBtn" href="#" target="_blank" rel="noopener" style="color:var(--accent2);text-decoration:none">스킬 .zip 받기</a>
         </div>
@@ -128,6 +132,7 @@
 <script>
 const REPO = "dyyoon86/ai_paste_server";
 const PROMPT_URL = `https://raw.githubusercontent.com/${REPO}/main/prompt/UNIVERSAL_PROMPT.md`;
+const PROMPT_PRO_URL = `https://raw.githubusercontent.com/${REPO}/main/prompt/UNIVERSAL_PROMPT_PRO.md`;
 const M = { win:/\.exe$/i, mac:/\.dmg$/i, linux:/\.AppImage$/i };
 
 // 다운로드 버튼: 최신 릴리스의 Windows .exe
@@ -153,17 +158,23 @@ fetch(`https://api.github.com/repos/${REPO}/releases/latest`).then(r=>r.json()).
 
 // 프롬프트: 보기 링크 + 클립보드 복사 (ChatGPT/Gemini/Claude 아무 데나 붙여넣기)
 document.getElementById("skillBtn").href = PROMPT_URL;
-document.getElementById("copyBtn").addEventListener("click", async (e) => {
-  const b = e.currentTarget;
-  try {
-    const txt = await (await fetch(PROMPT_URL)).text();
-    await navigator.clipboard.writeText(txt);
-    b.textContent = "✅ 복사됨! AI 챗에 붙여넣으세요";
-    setTimeout(()=> b.textContent = "📋 프롬프트 복사", 3000);
-  } catch {
-    window.open(PROMPT_URL, "_blank");  // 복사 실패 시 보기로 폴백
-  }
-});
+function wireCopy(id, url, label){
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.addEventListener("click", async () => {
+    const original = el.innerHTML;
+    try {
+      const txt = await (await fetch(url)).text();
+      await navigator.clipboard.writeText(txt);
+      el.textContent = "✅ 복사됨! AI 챗에 붙여넣으세요";
+      setTimeout(()=> el.innerHTML = original, 3000);
+    } catch {
+      window.open(url, "_blank");  // 복사 실패 시 보기로 폴백
+    }
+  });
+}
+wireCopy("copyProBtn", PROMPT_PRO_URL);
+wireCopy("copyBtn", PROMPT_URL);
 </script>
 </body>
 </html>
