@@ -230,9 +230,9 @@ export const RemotionRoot: React.FC = () => (
 async function injectNarrationAudio(jobId: string, plan: RenderPlan): Promise<void> {
   const fps = plan.fps;
   const audioDir = jobPath(jobId, "audio");
-  // 무음 제거: 씬 길이를 스펙이 아니라 "실제 발화 끝"에 딱 맞춘다.
-  const tail = Math.round(fps * 0.1); // 씬 사이 아주 짧은 숨(0.1s)
-  const floor = Math.round(fps * 0.8); // 등장 애니메이션 최소 시간
+  // 무음 제거: 스펙 길이(>내레이션이면 빈 구간) 대신 "실제 오디오 길이"에 맞춘다.
+  // 발화는 절대 안 잘리고, 오디오 자체의 자연스러운 끝맺음 여백 + 작은 숨만 남는다.
+  const floor = Math.round(fps * 1.0); // 등장 애니메이션 최소 시간
 
   for (const s of plan.scenes) {
     const text = (s.narration ?? "").trim();
@@ -241,11 +241,12 @@ async function injectNarrationAudio(jobId: string, plan: RenderPlan): Promise<vo
       const { dataUrl, durationSec, words } = await synthesizeScene(audioDir, s.id, text);
       s.audioUrl = dataUrl;
       if (words.length > 0) s.subtitleWords = words;
-      // 발화 끝 = 마지막 단어 시작 + 그 단어 추정 발화시간(글자수 기반). 단어정보 없으면 오디오 길이.
+      // 발화 끝(마지막 단어 + 그 단어 발화시간) + 자연스러운 숨. 단 실제 오디오 길이를 넘지 않음.
       const lastW = words[words.length - 1];
-      const speechEnd = lastW ? lastW.t + Math.max(0.35, lastW.w.length * 0.13) : durationSec;
-      // 스펙 길이를 따르지 않고 발화 길이에 맞춘다(스펙>발화 빈 구간 + 뒤쪽 묵음 제거).
-      s.durationInFrames = Math.max(floor, Math.ceil(speechEnd * fps) + tail);
+      const speechEnd = lastW ? lastW.t + Math.max(0.5, lastW.w.length * 0.18) : durationSec;
+      const want = Math.ceil((speechEnd + 0.4) * fps);
+      const audioFrames = Math.ceil(durationSec * fps) + Math.round(fps * 0.05);
+      s.durationInFrames = Math.max(floor, Math.min(want, audioFrames));
     } catch {
       /* leave this scene silent */
     }
