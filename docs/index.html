@@ -61,7 +61,8 @@
   .step h3{font-size:16px;font-weight:700;margin-bottom:2px}
   .step p{color:var(--muted);font-size:14px}
   .skill{display:inline-flex;align-items:center;gap:6px;margin-top:10px;color:var(--accent2);font-weight:600;
-    text-decoration:none;font-size:14px;border:1px solid var(--line);padding:8px 14px;border-radius:10px}
+    text-decoration:none;font-size:14px;border:1px solid var(--line);padding:8px 14px;border-radius:10px;
+    background:transparent;font-family:inherit;cursor:pointer}
   .skill:hover{border-color:var(--accent2)}
   .note{display:flex;gap:12px;background:rgba(255,210,74,.06);border:1px solid rgba(255,210,74,.18);
     border-radius:14px;padding:16px 18px;color:var(--muted);font-size:14px;margin-top:22px}
@@ -94,9 +95,10 @@
     <div class="eyebrow">How it works</div>
     <div class="steps">
       <div class="step"><div class="num">1</div><div>
-        <h3>스킬을 claude.ai에 올리기</h3>
-        <p>스킬 파일을 올리고 영상 주제를 한 줄 입력해요.</p>
-        <a class="skill" id="skillBtn" href="#">📄 스킬 파일 받기</a>
+        <h3>프롬프트를 AI에 붙여넣기</h3>
+        <p>ChatGPT·Gemini·Claude 어디든 프롬프트를 붙여넣고, 만들 영상 주제를 한 줄 적어요.</p>
+        <button class="skill" id="copyBtn">📋 프롬프트 복사</button>
+        <a class="skill" id="skillBtn" href="#" target="_blank" rel="noopener" style="margin-left:8px">프롬프트 보기</a>
       </div></div>
       <div class="step"><div class="num">2</div><div>
         <h3>나온 JSON 복사</h3>
@@ -122,15 +124,15 @@
 
 <script>
 const REPO = "dyyoon86/ai_paste_server";
+const PROMPT_URL = `https://raw.githubusercontent.com/${REPO}/main/prompt/UNIVERSAL_PROMPT.md`;
 const M = { win:/\.exe$/i, mac:/\.dmg$/i, linux:/\.AppImage$/i };
+
+// 다운로드 버튼: 최신 릴리스의 Windows .exe
 fetch(`https://api.github.com/repos/${REPO}/releases/latest`).then(r=>r.json()).then(rel=>{
   const a = rel.assets || [];
   const find = re => (a.find(x=>re.test(x.name))||{}).browser_download_url;
   const urls = { win:find(M.win), mac:find(M.mac), linux:find(M.linux) };
-  const skill = (a.find(x=>/skill/i.test(x.name))||{}).browser_download_url
-    || `https://raw.githubusercontent.com/${REPO}/main/skill/SKILL.md`;
   const btn = document.getElementById("dlBtn");
-  document.getElementById("skillBtn").href = skill;
   if (urls.win){ btn.href = urls.win; btn.innerHTML = "⬇ Windows용 다운로드"; }
   else { btn.innerHTML = "⬇ 다운로드"; btn.href = rel.html_url; }
   const others = ["mac","linux"].filter(o=>urls[o]);
@@ -141,6 +143,20 @@ fetch(`https://api.github.com/repos/${REPO}/releases/latest`).then(r=>r.json()).
   const btn = document.getElementById("dlBtn");
   btn.innerHTML = "⬇ 다운로드 (릴리스)"; btn.href = `https://github.com/${REPO}/releases/latest`;
   document.getElementById("osLine").textContent = "";
+});
+
+// 프롬프트: 보기 링크 + 클립보드 복사 (ChatGPT/Gemini/Claude 아무 데나 붙여넣기)
+document.getElementById("skillBtn").href = PROMPT_URL;
+document.getElementById("copyBtn").addEventListener("click", async (e) => {
+  const b = e.currentTarget;
+  try {
+    const txt = await (await fetch(PROMPT_URL)).text();
+    await navigator.clipboard.writeText(txt);
+    b.textContent = "✅ 복사됨! AI 챗에 붙여넣으세요";
+    setTimeout(()=> b.textContent = "📋 프롬프트 복사", 3000);
+  } catch {
+    window.open(PROMPT_URL, "_blank");  // 복사 실패 시 보기로 폴백
+  }
 });
 </script>
 </body>
