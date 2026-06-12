@@ -99,6 +99,9 @@
         <p>ChatGPT·Gemini·Claude 어디든 프롬프트를 붙여넣고, 만들 영상 주제를 한 줄 적어요.</p>
         <button class="skill" id="copyBtn">📋 프롬프트 복사</button>
         <a class="skill" id="skillBtn" href="#" target="_blank" rel="noopener" style="margin-left:8px">프롬프트 보기</a>
+        <div id="zipLine" style="margin-top:10px;font-size:13px;color:var(--muted);display:none">
+          또는 <b style="color:var(--fg)">Claude Skills</b> 쓰면 → <a id="zipBtn" href="#" target="_blank" rel="noopener" style="color:var(--accent2);text-decoration:none">스킬 .zip 받기</a>
+        </div>
       </div></div>
       <div class="step"><div class="num">2</div><div>
         <h3>나온 JSON 복사</h3>
@@ -139,6 +142,9 @@ fetch(`https://api.github.com/repos/${REPO}/releases/latest`).then(r=>r.json()).
   document.getElementById("osLine").innerHTML =
     `버전 ${rel.tag_name}` + (others.length ? ` · 다른 OS → ` +
       others.map(o=>`<a href="${urls[o]}">${({mac:"Mac",linux:"Linux"})[o]}</a>`).join(" / ") : "");
+  // Claude Skills용 .zip (릴리스에 있을 때만 보조 링크 노출)
+  const zip = (a.find(x=>/skill.*\.zip$/i.test(x.name) || /\.zip$/i.test(x.name))||{}).browser_download_url;
+  if (zip){ document.getElementById("zipBtn").href = zip; document.getElementById("zipLine").style.display = "block"; }
 }).catch(()=>{
   const btn = document.getElementById("dlBtn");
   btn.innerHTML = "⬇ 다운로드 (릴리스)"; btn.href = `https://github.com/${REPO}/releases/latest`;
