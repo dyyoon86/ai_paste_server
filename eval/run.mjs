@@ -48,42 +48,68 @@ const GEN_PROMPT = (topic) =>
   `- 스킬 안의 예시(AI 코딩/THE OLD WAY 등)를 절대 그대로 베끼지 마라. 주제에 맞게 새로 작성.\n` +
   `- 설명·서론 없이 ---BEGIN_VIDEO_SPEC_JSON--- 와 ---END_VIDEO_SPEC_JSON--- 사이에 유효한 JSON만.`;
 
-const results = [];
-console.log(`골든셋 ${topics.length}개 측정 시작${NO_CRITIC ? " (구조점수만)" : ""}\n`);
+const RUNS = args.includes("--runs") ? Math.max(1, parseInt(args[args.indexOf("--runs") + 1], 10)) : 1;
+const resDir = path.join(DIR, "results");
+if (!existsSync(resDir)) mkdirSync(resDir, { recursive: true });
+let sha = "nogit";
+try { sha = execFileSync("git", ["rev-parse", "--short", "HEAD"], { cwd: ROOT, encoding: "utf8" }).trim(); } catch {}
 
-for (const topic of topics) {
-  process.stdout.write(`▶ ${topic}\n`);
-  let spec = null, gerr = null;
-  try { spec = extractSpec(callClaude(GEN_PROMPT(topic))); } catch (e) { gerr = String(e.message || e); }
-  if (!spec) { console.log(`  ✗ 생성 실패 ${gerr ?? ""}`); results.push({ topic, struct: 0, quality: 0, total: 0, fail: true }); continue; }
+// ★ 재개 가능(resumable): 진행 중 캐시에 (run,topic)별 결과를 즉시 저장.
+//   세션이 죽어도 다시 실행하면 끝난 것은 건너뛰고 이어서 완료한다.
+const cacheFile = path.join(resDir, `.cache_${sha}_r${RUNS}_n${topics.length}.json`);
+let cache = {};
+if (existsSync(cacheFile)) { try { cache = JSON.parse(readFileSync(cacheFile, "utf8")); } catch {} }
+const key = (run, topic) => `${run}::${topic}`;
 
+console.log(`골든셋 ${topics.length}개 × ${RUNS}회 측정${NO_CRITIC ? " (구조점수만)" : ""}  (resumable)\n`);
+
+function scoreTopic(topic) {
+  let spec = null;
+  try { spec = extractSpec(callClaude(GEN_PROMPT(topic))); } catch {}
+  if (!spec) return { topic, struct: 0, quality: 0, total: 0, fail: true };
   const st = structuralScore(spec);
-  let quality = 0, axes = null, qissues = [];
+  let quality = 0;
   if (!NO_CRITIC) {
     try {
       const c = JSON.parse((callClaude(criticPrompt(spec, RUBRIC)).match(/\{[\s\S]*\}/) || ["{}"])[0]);
-      quality = Math.max(0, Math.min(50, c.quality ?? 0)); axes = c.axes ?? null; qissues = c.issues ?? [];
-    } catch (e) { qissues = ["critic 파싱 실패"]; }
+      quality = Math.max(0, Math.min(50, c.quality ?? 0));
+    } catch {}
   }
-  const total = st.score + quality;
-  results.push({ topic, struct: st.score, quality, total, graphicRatio: st.graphicRatio, structIssues: st.issues, axes, qissues });
-  console.log(`  구조 ${st.score}/50  품질 ${quality}/50  → 합 ${total}/100  (graphic ${st.graphicRatio}%)`);
-  if (st.issues.length) console.log("    구조이슈: " + st.issues.slice(0, 4).join(" / "));
+  return { topic, struct: st.score, quality, total: st.score + quality, graphicRatio: st.graphicRatio, structIssues: st.issues };
 }
 
-const avgStruct = avg(results.map((r) => r.struct));
-const avgQual = avg(results.map((r) => r.quality));
-const avgTotal = avg(results.map((r) => r.total));
-console.log(`\n=== 평균 ===\n구조 ${avgStruct.toFixed(1)}/50  품질 ${avgQual.toFixed(1)}/50  → 총 ${avgTotal.toFixed(1)}/100`);
+const runAverages = [];
+for (let run = 0; run < RUNS; run++) {
+  console.log(`--- RUN ${run + 1}/${RUNS} ---`);
+  const results = [];
+  for (const topic of topics) {
+    const k = key(run, topic);
+    let r = cache[k];
+    if (r) { console.log(`  ⟳ ${topic} (캐시 ${r.total})`); }
+    else {
+      r = scoreTopic(topic);
+      cache[k] = r; writeFileSync(cacheFile, JSON.stringify(cache)); // 즉시 저장(재개용)
+      console.log(`  ${r.fail ? "✗ 생성실패" : `구조 ${r.struct} 품질 ${r.quality} → ${r.total}`}  | ${topic}`);
+    }
+    results.push(r);
+  }
+  const a = { struct: avg(results.map((x) => x.struct)), qual: avg(results.map((x) => x.quality)), total: avg(results.map((x) => x.total)), results };
+  runAverages.push(a);
+  console.log(`  run${run + 1} 평균: ${a.total.toFixed(1)}/100\n`);
+}
 
-// 결과 저장(버전 비교용 — "측정" 기록)
-let sha = "nogit";
-try { sha = execFileSync("git", ["rev-parse", "--short", "HEAD"], { cwd: ROOT, encoding: "utf8" }).trim(); } catch {}
-const resDir = path.join(DIR, "results");
-if (!existsSync(resDir)) mkdirSync(resDir, { recursive: true });
+const totals = runAverages.map((r) => r.total);
+const mean = avg(totals), sd = std(totals);
+console.log(`=== ${RUNS}회 종합 ===`);
+runAverages.forEach((r, i) => console.log(`  run${i + 1}: 총 ${r.total.toFixed(1)} (구조 ${r.struct.toFixed(1)} 품질 ${r.qual.toFixed(1)})`));
+console.log(`평균 ${mean.toFixed(1)} ± ${sd.toFixed(1)}  (구조 ${avg(runAverages.map((r) => r.struct)).toFixed(1)}  품질 ${avg(runAverages.map((r) => r.qual)).toFixed(1)})`);
+console.log(`→ 개선이 "진짜"이려면 평균 차이가 ±${(sd * 2).toFixed(1)}(2σ)를 넘어야 함.`);
+
 const ts = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
-const file = path.join(resDir, `${ts}_${sha}.json`);
-writeFileSync(file, JSON.stringify({ sha, ts, goldenVersion: golden.version, avgStruct, avgQual, avgTotal, results }, null, 2));
+const file = path.join(resDir, `${ts}_${sha}_r${RUNS}.json`);
+writeFileSync(file, JSON.stringify({ sha, ts, goldenVersion: golden.version, runs: RUNS, mean, sd, runAverages }, null, 2));
+try { if (existsSync(cacheFile)) execFileSync("rm", ["-f", cacheFile]); } catch {}
 console.log(`\n기록 저장: eval/results/${path.basename(file)}`);
 
 function avg(a) { return a.length ? a.reduce((x, y) => x + y, 0) / a.length : 0; }
+function std(a) { if (a.length < 2) return 0; const m = avg(a); return Math.sqrt(avg(a.map((x) => (x - m) ** 2))); }
