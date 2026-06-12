@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { randomUUID } from "node:crypto";
-import { validateVideoSpec } from "@/lib/videoSpecSchema";
+import { validateVideoSpec, salvageVideoSpec } from "@/lib/videoSpecSchema";
 import { getTheme, themeForSpec, recommendThemes } from "@/lib/themes";
 import { buildRenderPlan } from "@/lib/renderPlan";
 import { enrichSpec } from "@/lib/enrich";
@@ -22,15 +22,22 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "요청 본문이 올바른 JSON이 아닙니다." }, { status: 400 });
   }
 
-  // Re-validate the spec server-side (never trust the client).
+  // Re-validate the spec server-side (never trust the client). If it doesn't
+  // pass cleanly, salvage the renderable scenes instead of rejecting outright.
   const validation = validateVideoSpec(body.spec);
-  if (!validation.ok || !validation.spec) {
-    return NextResponse.json(
-      { error: "VIDEO_SPEC 검증 실패", issues: validation.issues, fixPrompt: validation.fixPrompt },
-      { status: 422 },
-    );
+  let validSpec = validation.ok ? validation.spec : undefined;
+  if (!validSpec) {
+    const salvaged = salvageVideoSpec(body.spec);
+    if (salvaged.ok && salvaged.spec) {
+      validSpec = salvaged.spec;
+    } else {
+      return NextResponse.json(
+        { error: "VIDEO_SPEC 검증 실패", issues: validation.issues, fixPrompt: validation.fixPrompt },
+        { status: 422 },
+      );
+    }
   }
-  const spec = enrichSpec(validation.spec);
+  const spec = enrichSpec(validSpec);
 
   // Resolve theme: explicit themeId (themeId or legacy rulePackId), else top recommendation.
   const wantedId =

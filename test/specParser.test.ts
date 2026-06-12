@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { extractVideoSpecJson, ExtractError } from "@/lib/specParser";
+import { extractVideoSpecJson, ExtractError, repairTruncatedJson } from "@/lib/specParser";
 
 const obj = { schema: "remotion.one_click_video.v1", title: "x" };
 const json = JSON.stringify(obj);
@@ -58,5 +58,26 @@ describe("extractVideoSpecJson", () => {
       expect(e).toBeInstanceOf(ExtractError);
       expect((e as ExtractError).code).toBe("JSON_PARSE_FAILED");
     }
+  });
+
+  it("repairs JSON cut off mid-scene (recovers a valid object)", () => {
+    const truncated = `{"title":"x","scenes":[{"id":1,"screen_text":"a"},{"id":2,"screen_text":"b"},{"id":3,"icon":"✅`;
+    const r = extractVideoSpecJson(truncated);
+    expect(r.repaired).toBe(true);
+    const v = r.json as { scenes: unknown[] };
+    // At least the two complete scenes survive; the dangling tail is salvaged
+    // down to valid JSON (the incomplete scene is dropped later by salvage).
+    expect(v.scenes.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it("repairs a spec missing only its closing braces", () => {
+    const truncated = `{"title":"x","scenes":[{"id":1,"screen_text":"a"}]`;
+    const out = repairTruncatedJson(truncated);
+    expect(out).not.toBeNull();
+    expect((out!.value as { scenes: unknown[] }).scenes.length).toBe(1);
+  });
+
+  it("returns null when nothing renderable can be recovered", () => {
+    expect(repairTruncatedJson("not even json at all")).toBeNull();
   });
 });

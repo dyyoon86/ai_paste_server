@@ -233,6 +233,19 @@ export default function Home() {
       {/* Analysis */}
       {success && editSpec && (
         <>
+          {success.warnings && success.warnings.length > 0 && (
+            <div className="mt-4 rounded-2xl border border-amber-400/30 bg-amber-400/10 p-4 text-sm text-amber-200">
+              <p className="mb-1 font-bold">⚠️ 자동 복구함 — 그대로 만들 수 있어요</p>
+              <ul className="list-disc space-y-0.5 pl-5 text-amber-100/90">
+                {success.warnings.map((w, i) => (
+                  <li key={i}>{w}</li>
+                ))}
+              </ul>
+              <p className="mt-2 text-amber-100/70">
+                원본이 더 길었다면, AI에게 “JSON을 처음부터 끝까지 한 번에 다시” 요청해 전체를 받은 뒤 다시 붙여넣으면 빠진 장면까지 들어가요.
+              </p>
+            </div>
+          )}
           <AnalysisPanel spec={editSpec} resolution={resolvedRes} />
 
           {/* live Preview (left, sticky) + scene-by-scene editor (right) */}

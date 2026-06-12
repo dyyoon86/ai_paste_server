@@ -173,6 +173,63 @@ export function validateVideoSpec(input: unknown): ValidationResult {
   };
 }
 
+export interface SalvageResult {
+  ok: boolean;
+  spec?: VideoSpec;
+  /** What we had to drop/fix, so the UI can tell the user it was recovered. */
+  warnings: string[];
+}
+
+const round3 = (n: number) => Math.round(n * 1000) / 1000;
+
+/**
+ * Lenient recovery: instead of rejecting a partially-broken spec outright, keep
+ * only the scenes that individually validate, drop the broken ones, re-sequence
+ * the timeline (so dropped scenes leave no gaps/overlaps), and strict-validate
+ * the result. Lets a spec that lost its last scene to truncation still render.
+ * Returns ok:false only when nothing renderable remains.
+ */
+export function salvageVideoSpec(input: unknown): SalvageResult {
+  const warnings: string[] = [];
+  if (!input || typeof input !== "object") return { ok: false, warnings };
+  const obj = { ...(input as Record<string, unknown>) };
+  if (!Array.isArray(obj.scenes)) return { ok: false, warnings };
+
+  const goodScenes: Scene[] = [];
+  (obj.scenes as unknown[]).forEach((sc, i) => {
+    const r = sceneSchema.safeParse(sc);
+    if (r.success) {
+      goodScenes.push(r.data);
+    } else {
+      const id =
+        sc && typeof sc === "object" && "id" in sc
+          ? (sc as { id?: unknown }).id
+          : undefined;
+      warnings.push(`${id ?? i + 1}번 장면이 불완전해서 제외했어요.`);
+    }
+  });
+  if (goodScenes.length === 0) return { ok: false, warnings };
+
+  // Re-sequence: keep each surviving scene's own length, remove gaps/overlaps.
+  let t = 0;
+  goodScenes.forEach((sc, i) => {
+    const dur = sc.end > sc.start ? sc.end - sc.start : 3;
+    sc.id = i + 1;
+    sc.start = round3(t);
+    sc.end = round3(t + dur);
+    t = sc.end;
+  });
+  obj.scenes = goodScenes;
+  obj.duration_seconds = Math.max(1, round3(t));
+  // Fields that a mid-paste cut may have lost get safe defaults.
+  if (!Array.isArray(obj.assets)) obj.assets = [];
+  if (!Array.isArray(obj.render_notes)) obj.render_notes = [];
+
+  const v = validateVideoSpec(obj);
+  if (v.ok && v.spec) return { ok: true, spec: v.spec, warnings };
+  return { ok: false, warnings };
+}
+
 function buildFixPrompt(issues: ValidationIssue[]): string {
   const lines = issues.map(
     (i) => `- 경로 \`${i.path}\`: ${i.message}`,

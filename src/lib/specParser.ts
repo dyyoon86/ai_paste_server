@@ -22,6 +22,10 @@ export interface ExtractResult {
   json: unknown;
   rawJson: string;
   strategy: ExtractStrategy;
+  /** True when the JSON was cut off and we best-effort repaired it. */
+  repaired?: boolean;
+  /** Human note describing what was repaired (for the UI banner). */
+  repairNote?: string;
 }
 
 export class ExtractError extends Error {
@@ -79,12 +83,76 @@ function tryParse(rawJson: string, strategy: ExtractStrategy): ExtractResult {
   try {
     return { json: JSON.parse(rawJson), rawJson, strategy };
   } catch (err) {
+    // Best-effort recovery: the answer was probably cut off mid-paste.
+    const repaired = repairTruncatedJson(rawJson);
+    if (repaired) {
+      return { json: repaired.value, rawJson, strategy, repaired: true, repairNote: repaired.note };
+    }
     throw new ExtractError(
       "JSON_PARSE_FAILED",
       "추출한 텍스트를 JSON으로 파싱하지 못했습니다.",
       err instanceof Error ? err.message : String(err),
     );
   }
+}
+
+/**
+ * Returns the closing brackets needed to balance `s`, or null if the scan ends
+ * inside an open string literal (unsafe to close at this cut point).
+ */
+function neededClosers(s: string): string | null {
+  let inStr = false;
+  let esc = false;
+  const stack: string[] = [];
+  for (let i = 0; i < s.length; i++) {
+    const c = s[i];
+    if (inStr) {
+      if (esc) esc = false;
+      else if (c === "\\") esc = true;
+      else if (c === '"') inStr = false;
+      continue;
+    }
+    if (c === '"') inStr = true;
+    else if (c === "{") stack.push("}");
+    else if (c === "[") stack.push("]");
+    else if (c === "}" || c === "]") stack.pop();
+  }
+  if (inStr) return null;
+  return stack.reverse().join("");
+}
+
+/**
+ * Best-effort repair for truncated/cut-off JSON (a frequent failure when a long
+ * chat answer is copied and the tail is lost). Walks back from the end to the
+ * last point where, after closing still-open brackets, the prefix parses — so a
+ * spec cut mid-scene still yields all the complete scenes. null if unrecoverable.
+ */
+export function repairTruncatedJson(raw: string): { value: unknown; note: string } | null {
+  const s = raw.trim();
+  if (!s.startsWith("{") && !s.startsWith("[")) return null;
+  // Bound the search: an unparseable tail longer than this is implausible.
+  const minEnd = Math.max(1, s.length - 20000);
+  for (let end = s.length; end >= minEnd; end--) {
+    const ch = s[end - 1];
+    // Only attempt at plausible value-endings to keep this cheap.
+    if (ch !== "}" && ch !== "]" && ch !== '"' && !(ch >= "0" && ch <= "9")) continue;
+    const cand = s.slice(0, end).replace(/,\s*$/, "");
+    const closers = neededClosers(cand);
+    if (closers === null) continue; // cut inside a string — keep trimming
+    try {
+      const value = JSON.parse(cand + closers);
+      return {
+        value,
+        note:
+          end < s.length
+            ? "JSON이 중간에 잘려 있어, 완전한 부분까지만 살려서 복구했어요(불완전한 마지막 항목은 제외)."
+            : "JSON 끝의 괄호를 보정해 복구했어요.",
+      };
+    } catch {
+      /* keep trimming back to an earlier complete boundary */
+    }
+  }
+  return null;
 }
 
 export function extractVideoSpecJson(input: string): ExtractResult {

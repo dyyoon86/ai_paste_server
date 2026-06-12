@@ -1,5 +1,5 @@
 import { extractVideoSpecJson, ExtractError, type ExtractStrategy } from "./specParser";
-import { validateVideoSpec, type ValidationIssue, type VideoSpec } from "./videoSpecSchema";
+import { validateVideoSpec, salvageVideoSpec, type ValidationIssue, type VideoSpec } from "./videoSpecSchema";
 import { recommendThemes, CATEGORY_LABELS, type DesignTheme } from "./themes";
 import { enrichSpec } from "./enrich";
 
@@ -60,6 +60,8 @@ export interface AnalyzeSuccess {
   recommendations: RecommendationView[];
   /** All themes (for the full picker), spec-adjusted, in recommendation order. */
   allThemes: RecommendationView[];
+  /** Non-fatal recovery notes (truncation repaired / broken scenes dropped). */
+  warnings?: string[];
 }
 
 export interface AnalyzeFailure {
@@ -97,20 +99,31 @@ export function analyzeInput(rawInput: string): AnalyzeResult {
     return { ok: false, stage: "extract", message: String(err) };
   }
 
+  const warnings: string[] = [];
+  if (extracted.repaired && extracted.repairNote) warnings.push(extracted.repairNote);
+
   const validation = validateVideoSpec(extracted.json);
-  if (!validation.ok || !validation.spec) {
-    return {
-      ok: false,
-      stage: "validate",
-      message: "VIDEO_SPEC_JSON 검증에 실패했습니다.",
-      issues: validation.issues,
-      fixPrompt: validation.fixPrompt,
-    };
+  let validSpec = validation.ok ? validation.spec : undefined;
+  if (!validSpec) {
+    // Don't reject outright — salvage the renderable scenes if any survive.
+    const salvaged = salvageVideoSpec(extracted.json);
+    if (salvaged.ok && salvaged.spec) {
+      validSpec = salvaged.spec;
+      warnings.push(...salvaged.warnings);
+    } else {
+      return {
+        ok: false,
+        stage: "validate",
+        message: "VIDEO_SPEC_JSON 검증에 실패했습니다.",
+        issues: validation.issues,
+        fixPrompt: validation.fixPrompt,
+      };
+    }
   }
 
   // Harness: fill missing per-scene icon/points so the center is never sparse,
   // even when the brain omits them. Brain-provided values win.
-  const spec = enrichSpec(validation.spec);
+  const spec = enrichSpec(validSpec);
   const recs = recommendThemes(spec);
 
   const allThemes: RecommendationView[] = recs.map((r) => toView(r.theme, r.reason));
@@ -123,5 +136,6 @@ export function analyzeInput(rawInput: string): AnalyzeResult {
     resolvedResolution: ASPECT_TO_RES[spec.aspect_ratio] ?? spec.resolution,
     recommendations,
     allThemes,
+    warnings: warnings.length ? warnings : undefined,
   };
 }

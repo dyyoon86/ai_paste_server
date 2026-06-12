@@ -1,11 +1,47 @@
 import { describe, it, expect } from "vitest";
-import { validateVideoSpec } from "@/lib/videoSpecSchema";
+import { validateVideoSpec, salvageVideoSpec } from "@/lib/videoSpecSchema";
 import { extractVideoSpecJson } from "@/lib/specParser";
 import { SAMPLE_INPUT } from "@/lib/sampleInput";
 
 function sampleSpec() {
   return extractVideoSpecJson(SAMPLE_INPUT).json;
 }
+
+describe("salvageVideoSpec", () => {
+  it("drops broken scenes and re-sequences the rest", () => {
+    const spec = sampleSpec() as { scenes: Array<Record<string, unknown>> };
+    // Corrupt scene index 2: remove the required screen_text.
+    delete spec.scenes[2].screen_text;
+    const r = salvageVideoSpec(spec);
+    expect(r.ok).toBe(true);
+    expect(r.spec!.scenes.length).toBe(5); // one dropped from 6
+    expect(r.warnings.length).toBe(1);
+    // Timeline is contiguous (no gaps/overlaps) after re-sequencing.
+    let prev = 0;
+    for (const s of r.spec!.scenes) {
+      expect(s.start).toBeCloseTo(prev, 3);
+      expect(s.end).toBeGreaterThan(s.start);
+      prev = s.end;
+    }
+    expect(r.spec!.duration_seconds).toBeCloseTo(prev, 3);
+  });
+
+  it("recovers a spec truncated mid-scene via parser + salvage", () => {
+    const sample = sampleSpec() as Record<string, unknown>;
+    const full = JSON.stringify(sample);
+    const cut = full.slice(0, full.length - 40); // chop the tail
+    const repaired = extractVideoSpecJson(cut);
+    expect(repaired.repaired).toBe(true);
+    const r = salvageVideoSpec(repaired.json);
+    expect(r.ok).toBe(true);
+    expect(r.spec!.scenes.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("returns ok:false when no scene survives", () => {
+    const r = salvageVideoSpec({ title: "x", scenes: [{ id: 1 }] });
+    expect(r.ok).toBe(false);
+  });
+});
 
 describe("validateVideoSpec", () => {
   it("accepts the bundled sample spec", () => {
